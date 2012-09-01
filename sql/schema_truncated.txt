@@ -1,0 +1,123 @@
+--
+-- PostgreSQL database dump
+--
+
+--
+-- Name: update_remapping_status(); Type: FUNCTION; Schema: public; Owner: osm
+-- This is Fairy Dust. Trigger function should be better but I don't know how yet. 
+
+CREATE FUNCTION update_remapping_status() RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+	deletedway RECORD;
+	updatedrecord RECORD;
+	counter numeric;
+	total numeric;
+	start timestamp;
+	current timestamp;
+	duration numeric;
+BEGIN
+	-- EMPTY REMAPPING RECORDS
+	UPDATE deletedways SET (remappinginarea, likelyremapped, remappedwayid, recentwaysinarea) = (null, null, null, null);
+	start := timeofday();
+	counter := 0;
+	--total := 1000;
+	--FOR deletedway IN SELECT * FROM deletedways ORDER BY RANDOM() LIMIT 1000 LOOP
+	SELECT count(1) FROM deletedways INTO total;
+	FOR deletedway IN SELECT * FROM deletedways LOOP
+		RAISE NOTICE 'Updating remapped status for %', deletedway.id;
+		WITH candidates AS (
+			SELECT 
+				 a.id, 
+				 a.tags->'highway' AS type, 
+				 b.tags->'highway' AS deletedtype, 
+					 ST_HausdorffDistance(ST_Intersection(ST_Buffer(ST_Transform(a.linestring, 3857), 20), ST_Transform(b.linestring, 3857)), ST_Transform(b.linestring, 3857)) as hausdorff,
+					 ABS(ST_HausdorffDistance(ST_Intersection(ST_Buffer(ST_Transform(a.linestring, 3857), 20), ST_Transform(b.linestring, 3857)), ST_Transform(b.linestring, 3857))) < ST_Length(st_transform(b.linestring, 3857)) * 0.1 as hasclosegeom,
+					 a.tstamp
+			FROM 
+				 ways a, deletedways b 
+			WHERE 
+				 a.tags?'highway' 
+			AND 
+				 ST_Intersects(ST_Envelope(b.linestring), a.linestring) 
+			AND 
+				 a.tstamp > DATE '2012-07-17' 
+			AND 
+				 b.id =  deletedway.id
+			ORDER BY 
+				 hausdorff
+		)
+		UPDATE deletedways
+		SET (remappinginarea, likelyremapped, remappedwayid, recentwaysinarea) = (
+			(SELECT count(1) FROM candidates) > 0, 
+			(SELECT count(1) FROM candidates WHERE hasclosegeom = true) > 0, 
+			(SELECT id FROM candidates WHERE hasclosegeom = true LIMIT 1), 
+			array((SELECT id FROM candidates WHERE hasclosegeom = false)))
+		WHERE id = deletedway.id;
+		counter := counter + 1;
+		current := timeofday();
+		duration := extract(epoch from current) - extract(epoch from start);
+		RAISE NOTICE ', took %, % %%, approx % mins to go', round(duration, 1), round(counter/total * 100, 1), round(((duration / (counter / total)) / 60) - (duration / 60), 1);
+	END LOOP;
+END;
+$$;
+
+
+ALTER FUNCTION public.update_remapping_status() OWNER TO osm;
+
+
+--
+-- Name: deletedwayids; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
+-- This is a helper table used to hold the ids of the ways deleted by the redaction bot.
+
+CREATE TABLE deletedwayids (
+    id bigint
+);
+
+
+ALTER TABLE public.deletedwayids OWNER TO osm;
+
+--
+-- Name: deletedways; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
+-- This is the main deleted ways table used by the Remap-A-Tron services as well as Fairy Dust. It mimics the regular ways table but adds some flag columns to hold the Fairy Dust results.
+
+CREATE TABLE deletedways (
+    id bigint,
+    version integer,
+    user_id integer,
+    tstamp timestamp without time zone,
+    changeset_id bigint,
+    tags hstore,
+    nodes bigint[],
+    linestring geometry(LineString,4326),
+    remappinginarea boolean,
+    likelyremapped boolean,
+    remappedwayid bigint,
+    recentwaysinarea bigint[],
+    remappedflag smallint
+);
+
+
+ALTER TABLE public.deletedways OWNER TO osm;
+
+--
+-- Name: remapathonresults; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
+-- This table holds the results of the periodic score counts.
+
+CREATE TABLE remapathonresults (
+    tstamp timestamp without time zone,
+    mainroads integer,
+    mainandresidential integer,
+    allhighways integer,
+    allways integer
+);
+
+
+ALTER TABLE public.remapathonresults OWNER TO osm;
+
+--
+-- Name: idx_deletedways_geom; Type: INDEX; Schema: public; Owner: osm; Tablespace: 
+--
+
+CREATE INDEX idx_deletedways_geom ON deletedways USING gist (linestring);
