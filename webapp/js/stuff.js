@@ -70,6 +70,7 @@ function getItem() {
 					msg(locstr , 3);
 				}
 			);
+			updateCounter();
         }
     );
 };
@@ -118,6 +119,7 @@ function initmap() {
 			//	msg(e.which);
 		}
 	});
+	updateCounter();
 };
 
 function toggleLayers() {
@@ -200,4 +202,12 @@ function confirmRemap(e) {
 
 function showAbout() {
 	dlg("<strong>Help remap the main OpenStreetMap road network in the US, one way at a time!</strong><p>This website will show you one single deleted way that is likely not remapped yet.<p>You have three options:<p>1. Flag the way as already remapped;<br />2. Skip this one and leave it for someone else to remap;<br />3. Open this area in JOSM or Potlatch to remap it. (You have to have JOSM running and the remote control function enabled in the preferences for the JOSM link to work).<p>When you're done, the next way appears. Repeat ad infinitum.<p><small>A thing by <a href='mailto:m@rtijn.org'>Martijn van Exel</a></small><p><div class='button' onClick=\"dlgClose()\">OK</div>",0);
+}
+
+function updateCounter() {
+	$.getJSON(
+		'http://lima.schaaltreinen.nl/remappingservice/count',
+		function(data) {
+			$('#counter').text(data[0])
+		});	
 }
