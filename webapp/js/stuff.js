@@ -4,6 +4,12 @@ var plotlist;
 var plotlayers=[];
 var geojsonLayer = new L.GeoJSON();
 var geojsonPointLayer = new L.GeoJSON();
+//var geojsonPointLayer = new L.GeoJSON({
+//    pointToLayer: function (feature, latlng) {
+//        msg(latlng);
+//        return L.circleMarker(latlng, geojsonMarkerOptions);
+//    }
+//});
 var url = "http://lima.schaaltreinen.nl/remappingservice/"; 
 var clickcnt;
 var m1, m2;
@@ -15,6 +21,15 @@ var osmAttrib='Map data © OpenStreetMap contributors'
 var t; 
 
 var DISABLEKEYBOARDHOOKS = false;
+
+var geojsonMarkerOptions = {
+    radius: 14,
+    fillColor: "#ff7800",
+    color: "#F00",
+    weight: 4,
+    opacity: 1,
+    fillOpacity: 0.0
+};
 
 function getExtent(geojson) {
 	var lats = [], lngs = [];
