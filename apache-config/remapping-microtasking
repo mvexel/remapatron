@@ -17,6 +17,6 @@ Alias /remappingservice/static /osm/software/remapping-microtask/service/static/
 AddType text/html .py
 
 <Directory /osm/software/remapping-microtask/service/>
-        Order deny,allow
+        Order Allow,Deny
         Allow from all
 </Directory>

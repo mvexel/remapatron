@@ -120,6 +120,7 @@ function initmap() {
 		}
 	});
 	updateCounter();
+	//msg('We\'re done -- for now! Thanks for all your help! Stay tuned for more Remap-A-Tron.',0);
 };
 
 function toggleLayers() {
@@ -197,7 +198,7 @@ function openIn(editor) {
 }
 
 function confirmRemap(e) {
-	dlg("The area is being loaded in " + (e=='j'?'JOSM':'Potlatch') + " now. Come back here after you do your edits.<br /><br />Did you remap the way?<p><div class=button onClick=nextUp(3);$('#dlgBox').fadeOut()>YES</div><div class=button onClick=nextUp(0);$('#dlgBox').fadeOut()>NO :(</div>");
+	dlg("The area is being loaded in " + (e=='j'?'JOSM':'Potlatch') + " now. Come back here after you do your edits.<br /><br />Did you remap the way?<p><div class=button onClick=nextUp(3);$('#dlgBox').fadeOut()>YES</div><div class=button onClick=nextUp(0);$('#dlgBox').fadeOut()>NO :(</div><div class=button onClick=nextUp(3);$('#dlgBox').fadeOut()>SOMEONE BEAT ME TO IT</div>");
 }
 
 function showAbout() {
