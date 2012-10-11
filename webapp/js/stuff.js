@@ -14,7 +14,7 @@ var osmUrl='http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 var osmAttrib='Map data © OpenStreetMap contributors'
 var t; 
 
-var DISABLEKEYBOARDHOOKS = true;
+var DISABLEKEYBOARDHOOKS = false;
 
 function getExtent(geojson) {
 	var lats = [], lngs = [];
