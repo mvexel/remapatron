@@ -3,6 +3,7 @@ var ajaxRequest;
 var plotlist;
 var plotlayers=[];
 var geojsonLayer = new L.GeoJSON();
+var geojsonPointLayer = new L.GeoJSON();
 var url = "http://lima.schaaltreinen.nl/remappingservice/"; 
 var clickcnt;
 var m1, m2;
@@ -12,6 +13,8 @@ var attrControl;
 var osmUrl='http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 var osmAttrib='Map data © OpenStreetMap contributors'
 var t; 
+
+var DISABLEKEYBOARDHOOKS = true;
 
 function getExtent(geojson) {
 	var lats = [], lngs = [];
@@ -55,9 +58,10 @@ function getItem() {
     $.getJSON(
         url,
         function(data) {
-			way_id = data.properties['id'];
-			geojsonLayer.addGeoJSON(data);
-			var extent = getExtent(data);
+			way_id = data.features[0].properties['id'];
+			geojsonLayer.addGeoJSON(data.features[0]);
+			geojsonPointLayer.addGeoJSON(data.features[1]);
+			var extent = getExtent(data.features[0]);
 			map.fitBounds(extent);
 			var mqurl = 'http://open.mapquestapi.com/nominatim/v1/reverse?format=json&lat=' + map.getCenter().lat + ' &lon=' + map.getCenter().lng;
 			//msg(mqurl, 3);
@@ -77,10 +81,10 @@ function getItem() {
 
 function initmap() {
     map = new L.Map('map');
-    bingLayer = new L.TileLayer.Bing(
-		"AncYMYJDvHMmYPXT7mJcpCeYxGEVcJFj_StK8PO3ih8WgjvfHzuvnyjc_iRFXqN2",
-		"Aerial"
-    );
+//    bingLayer = new L.TileLayer.Bing(
+//		"AncYMYJDvHMmYPXT7mJcpCeYxGEVcJFj_StK8PO3ih8WgjvfHzuvnyjc_iRFXqN2",
+//		"Aerial"
+//    );
     osmLayer = new L.TileLayer(osmUrl, {attribution: osmAttrib});
     map.setView(new L.LatLng(40.0, -90.0),17);
     map.addLayer(osmLayer);
@@ -94,33 +98,36 @@ function initmap() {
 //    map.addControl(layersControl);
     
     map.addLayer(geojsonLayer);
+    map.addLayer(geojsonPointLayer);
     getItem();
     $.cookie('activelayer', 'osmLayer');
 	
 	// add keyboard hooks
-	$(document).bind('keydown', function(e){
-		switch (e.which) {
-			case 81: //q
-				nextUp(1);
-				break;
-			case 87: //w
-				nextUp(-1);
-				break;
-			case 69: //e
-				openIn('j');
-				break;
-			case 82: //r
-				openIn('p');
-				break;
-			case 83: //s
-				toggleLayers();
-				break;
-			//default:
-			//	msg(e.which);
-		}
-	});
+    if (!DISABLEKEYBOARDHOOKS) {
+        $(document).bind('keydown', function(e){
+            switch (e.which) {
+                case 81: //q
+                    nextUp(1);
+                    break;
+                case 87: //w
+                    nextUp(-1);
+                    break;
+                case 69: //e
+                    openIn('j');
+                    break;
+                case 82: //r
+                    openIn('p');
+                    break;
+                case 83: //s
+                    //toggleLayers();
+                    break;
+                //default:
+                //	msg(e.which);
+            }
+        })
+	};
 	updateCounter();
-	//msg('We\'re done -- for now! Thanks for all your help! Stay tuned for more Remap-A-Tron.',0);
+	//msg('We\'re done -- for now! Thanks for all your help! Stay tuned for more *-A-Tron.',0);
 };
 
 function toggleLayers() {
@@ -198,11 +205,11 @@ function openIn(editor) {
 }
 
 function confirmRemap(e) {
-	dlg("The area is being loaded in " + (e=='j'?'JOSM':'Potlatch') + " now. Come back here after you do your edits.<br /><br />Did you remap the way?<p><div class=button onClick=nextUp(3);$('#dlgBox').fadeOut()>YES</div><div class=button onClick=nextUp(0);$('#dlgBox').fadeOut()>NO :(</div><div class=button onClick=nextUp(3);$('#dlgBox').fadeOut()>SOMEONE BEAT ME TO IT</div>");
+	dlg("The area is being loaded in " + (e=='j'?'JOSM':'Potlatch') + " now. Come back here after you do your edits.<br /><br />Did you untangle the way?<p><div class=button onClick=nextUp(3);$('#dlgBox').fadeOut()>YES</div><div class=button onClick=nextUp(0);$('#dlgBox').fadeOut()>NO :(</div><div class=button onClick=nextUp(3);$('#dlgBox').fadeOut()>SOMEONE BEAT ME TO IT</div>");
 }
 
 function showAbout() {
-	dlg("<strong>Help remap the main OpenStreetMap road network in the US, one way at a time!</strong><p>This website will show you one single deleted way that is likely not remapped yet.<p>You have three options:<p>1. Flag the way as already remapped;<br />2. Skip this one and leave it for someone else to remap;<br />3. Open this area in JOSM or Potlatch to remap it. (You have to have JOSM running and the remote control function enabled in the preferences for the JOSM link to work).<p>When you're done, the next way appears. Repeat ad infinitum.<p><small>A thing by <a href='mailto:m@rtijn.org'>Martijn van Exel</a></small><p><div class='button' onClick=\"dlgClose()\">OK</div>",0);
+	dlg("<strong>Help untangle the main OpenStreetMap road network in the US, one way at a time!</strong><p>This website will highlight one tangled way.<p>You have three options:<p>1. Flag the way as not tangled (we do make mistakes);<br />2. Skip this one and leave it for someone else to untangle;<br />3. Open this area in JOSM or Potlatch to untangle it. (You have to have JOSM running and the remote control function enabled in the preferences for the JOSM link to work).<p>When you're done, the next way appears. Repeat ad infinitum.<p><small>A thing by <a href='mailto:m@rtijn.org'>Martijn van Exel</a></small><p><div class='button' onClick=\"dlgClose()\">OK</div>",0);
 }
 
 function updateCounter() {
