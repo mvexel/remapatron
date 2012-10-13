@@ -220,11 +220,11 @@ function openIn(editor) {
 }
 
 function confirmRemap(e) {
-	dlg("The area is being loaded in " + (e=='j'?'JOSM':'Potlatch') + " now. Come back here after you do your edits.<br /><br />Did you untangle the way?<p><div class=button onClick=nextUp(3);$('#dlgBox').fadeOut()>YES</div><div class=button onClick=nextUp(0);$('#dlgBox').fadeOut()>NO :(</div><div class=button onClick=nextUp(3);$('#dlgBox').fadeOut()>SOMEONE BEAT ME TO IT</div>");
+	dlg("The area is being loaded in " + (e=='j'?'JOSM':'Potlatch') + " now. Come back here after you do your edits.<br /><br />Did you unzorro the way?<p><div class=button onClick=nextUp(3);$('#dlgBox').fadeOut()>YES</div><div class=button onClick=nextUp(0);$('#dlgBox').fadeOut()>NO :(</div><div class=button onClick=nextUp(3);$('#dlgBox').fadeOut()>SOMEONE BEAT ME TO IT</div>");
 }
 
 function showAbout() {
-	dlg("<strong>Help untangle the main OpenStreetMap road network in the US, one way at a time!</strong><p>This website will highlight one tangled way.<p>You have three options:<p>1. Flag the way as not tangled (we do make mistakes);<br />2. Skip this one and leave it for someone else to untangle;<br />3. Open this area in JOSM or Potlatch to untangle it. (You have to have JOSM running and the remote control function enabled in the preferences for the JOSM link to work).<p>When you're done, the next way appears. Repeat ad infinitum.<p><small>A thing by <a href='mailto:m@rtijn.org'>Martijn van Exel</a></small><p><div class='button' onClick=\"dlgClose()\">OK</div>",0);
+	dlg("<strong>Help unzorro the main OpenStreetMap road network in the US, one way at a time!</strong><p>This website will highlight one zorro way.<p>You have three options:<p>1. Flag the way as non-zorro (we do make mistakes);<br />2. Skip this one and leave it for someone else to unzorro;<br />3. Open this area in JOSM or Potlatch to unzorro it. (You have to have JOSM running and the remote control function enabled in the preferences for the JOSM link to work).<p>When you're done, the next way appears. Repeat ad infinitum.<p><small>A thing by <a href='mailto:m@rtijn.org'>Martijn van Exel</a></small><p><div class='button' onClick=\"dlgClose()\">OK</div>",0);
 }
 
 function updateCounter() {
