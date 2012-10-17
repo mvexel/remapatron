@@ -44,6 +44,10 @@ body {
 	opacity: 0.8;
 }
 
+.link {
+    text-decoration:underline;
+}
+
 div.fullscreen{
 	display:block;
 	position:absolute;
