@@ -2,30 +2,31 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Untangl-a-tron</title>
-    <link rel="stylesheet" type="text/css" href="leaflet/leaflet.css" />
+    <title>OpenStreetMap MapRoulette</title>
     <link rel="stylesheet" type="text/css" href="css/style.css" />
-    <script type="text/javascript" src="leaflet/leaflet.js"></script>
-    <script type="text/javascript" src="js/leaflet-bing.js"></script>
+    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.4.5/leaflet.css" />
+    <!--[if lte IE 8]>
+        <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.4.5/leaflet.ie.css" />
+    <![endif]-->
+    <script src="http://cdn.leafletjs.com/leaflet-0.4.5/leaflet.js"></script>
     <script type="text/javascript" src="jquery/jquery-1.7.1.min.js"></script>
     <script type="text/javascript" src="js/jquery.cookie.js"></script>
     <script type="text/javascript" src="js/stuff.js"></script>
   </head>
   <body onload=initmap()>
-    <div id="announce" class="fullscreen" style="z-index:10000; background-color:black; color:white; opacity:0.95; font-size:72px; padding-top:40px; text-align:center">The next OpenStreetMap *-A-TRON will be unveiled at SOTM US on October 13</div>
     <div id="map" class="fullscreen"></div>
     <div id="msgBox"></div>
     <div id="dlgBox"></div>
     <div class="banner">   
-        <strong>OPENSTREETMAP US<br /><em>UNTANGL-A-TRON</em></strong> 
-		<div class=button id=about onClick="showAbout()">about / help</div> 
-		<div style="font-size:10px">we're down to <span style='font-weight:bold' id=counter></span> tangled up ways. Thanks!</div>
+        <strong>OPENSTREETMAP US<br /><em>MAPROULETTE</em></strong> 
+        <div style="font-size:10px">CURRENT CHALLENGE: <a href="https://oegeo.wordpress.com/2012/10/29/new-maproulette-challenge-connectivity-bugs/" target=_blank>CONNECTIVITY</a></div> 
+        <div class=button id=about onClick="showAbout()">about / help</div> 
+		<div style="font-size:10px">we're down to <span style='font-weight:bold' id=counter></span> connectivity errors. Thanks!</div>
 		<!--<div style="font-size:10px;font-weight:bold;color:red">LEVEL 2: unclassified, road, residential ways.</div>-->
-        <div class="button" style="background-color:#3c3" onClick=nextUp(1)>THIS IS NOT TANGLED :/<span class=key>q</span></div>
-        <div class="button" style="background-color:#aaa" onClick=nextUp(-1)>UNSURE / SKIP <span class=key>w</span></div>
-        <div class=button onClick=openIn('j')>UNTANGLE IN JOSM <span class=key>e</span></div>
-        <div class=button onClick=openIn('p')>UNTANGLE IN POTLATCH <span class=key>r</span></div>
-<!--        <div class=button style="background-color:#3c3" onClick=toggleLayers()>SWITCH LAYERS <span class=key>s</span></div>-->
+        <div class="button" style="background-color:#3c3" onClick=nextUp(1)>THIS IS NOT AN ERROR :/<span class=key>q</span></div>
+        <div class="button" style="background-color:#aaa" onClick=nextUp(-1)>I'M NOT SURE / SKIP <span class=key>w</span></div>
+        <div class=button onClick=openIn('j')>EDIT IN JOSM <span class=key>e</span></div>
+        <div class=button onClick=openIn('p')>EDIT IN POTLATCH <span class=key>r</span></div>
     </div>
   </body>
 </html>

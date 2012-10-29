@@ -13,7 +13,7 @@ body {
 	color:black;
 	border: 1px solid #03c;
     display:none;
-    z-index:1000;
+    z-index:15;
     text-align:center;
     position:absolute;
     left:30%;
@@ -28,7 +28,7 @@ body {
 
 #dlgBox {
     display:none;
-    z-index:1000;
+    z-index:15;
     text-align:center;
     position:absolute;
     left:30%;
@@ -57,7 +57,7 @@ div.banner {
 	text-align:center;
 	border: 1px solid #666;
 	padding:4px;
-	z-index:100;
+	z-index:15;
 	position:absolute;
 	right:10px;
 	width:250px;
@@ -105,4 +105,13 @@ div.button#about {
 	color:black;
 	-moz-border-radius: 3px;
 	border-radius: 3px;
+}
+
+#announce {
+    background-color:black;
+    color:white;
+    opacity:0.95;
+    font-size:72px;
+    z-index:20;
+    text-align:center;
 }
