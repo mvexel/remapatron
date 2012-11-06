@@ -197,7 +197,7 @@ function openIn(editor) {
     var sw = bounds.getSouthWest();
     var ne = bounds.getNorthEast();
 	if (editor == 'j') { // JOSM
-		var JOSMurl = "http://127.0.0.1:8111/load_and_zoom?left=" + sw.lng + "&right=" + ne.lng + "&top=" + ne.lat + "&bottom=" + sw.lat + "&new_layer=0"
+		var JOSMurl = "http://127.0.0.1:8111/load_and_zoom?left=" + sw.lng + "&right=" + ne.lng + "&top=" + ne.lat + "&bottom=" + sw.lat + "&select=node" + osmid + "&new_layer=0";
 		// Use the .ajax JQ method to load the JOSM link unobtrusively and alert when the JOSM plugin is not running.
 		$.ajax({
 			url: JOSMurl,
