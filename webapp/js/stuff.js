@@ -9,12 +9,14 @@ var store_url = "http://lima.schaaltreinen.nl/remappingservice/store/";
 var count_url = "http://lima.schaaltreinen.nl/remappingservice/count/";
 var clickcnt;
 var m1, m2;
-var osmid;
+var currentWayId;
 var bingLayer, osmLayer;
 var attrControl;
 var osmUrl='http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 var osmAttrib='Map data © OpenStreetMap contributors'
 var t; 
+var currentNodeId = 0;
+var currentWayId = 0;
 
 var DISABLEKEYBOARDHOOKS = false;
 
@@ -70,7 +72,8 @@ function getItem() {
     $.getJSON(
         get_url,
         function(data) {
-			osmid = data.features[0].properties['id'];
+			currentWayId = data.features[0].properties['id'];
+			currentNodeId = data.features[1].properties['id'];
             var popuphtml = '<big><ul>Tags</ul></big><br />'
             for (tag in data.features[0].properties.tags) {
                 popuphtml += tag + ': ' + data.features[0].properties.tags[tag] + '<br />';
@@ -98,22 +101,9 @@ function getItem() {
 
 function initmap() {
     map = new L.Map('map');
-//    bingLayer = new L.TileLayer.Bing(
-//		"AncYMYJDvHMmYPXT7mJcpCeYxGEVcJFj_StK8PO3ih8WgjvfHzuvnyjc_iRFXqN2",
-//		"Aerial"
-//    );
     osmLayer = new L.TileLayer(osmUrl, {attribution: osmAttrib});
     map.setView(new L.LatLng(40.0, -90.0),17);
     map.addLayer(osmLayer);
-    
-//	var baseLayers = {
-//		"Bing Aerial": bingLayer,
-//		"OpenStreetMap": osmLayer/
-//	};
-
-//    layersControl = new L.Control.Layers(baseLayers);
-//    map.addControl(layersControl);
-    
     map.addLayer(geojsonLayer);
     map.addLayer(geojsonPointLayer);
     getItem();
@@ -139,7 +129,6 @@ function initmap() {
         })
 	};
 	updateCounter();
-	//msg('We\'re done -- for now! Thanks for all your help! Stay tuned for more *-A-Tron.',0);
 };
 
 function toggleLayers() {
@@ -152,40 +141,12 @@ function toggleLayers() {
 		map.removeLayer(bingLayer);
 		map.addLayer(osmLayer);
 		$.cookie('activelayer', 'osmLayer');
-//		map.attributionControl.addAttribution(osmAttrib);
 	}
-}
-
-function startSelect() {
-    $("#map").addClass("xhair");
-    msg("Click on the map to set the start of the bridge", 3);
-    map.on('click', function(e) {
-		msg("Now click on the map to set the end of the bridge", 3);
-		m1 = new L.CircleMarker(e.latlng);
-		map.addLayer(m1)
-		map.on('click', function(e) {
-			m2 = new L.CircleMarker(e.latlng);
-			map.addLayer(m2)
-			stopSelect()
-        });
-    });
-}
-
-function stopSelect() {
-    $("#map").removeClass("xhair");
-    savedMsg();
-    clickcnt=0;
-	t = setTimeout("getItem()", 1000);
 }
 
 function nextUp(i) {
 	msg("OK, moving along...",1);
-	$.ajax(store_url + osmid + '/' + i, {'type':'PUT'}).done(function(){setTimeout("getItem()", 1000)});
-}
-
-function savedMsg() {
-//    msg('Saved! thx', 0.8);
-    msg('This is alpha and nothing is saved yet!', 1);
+	$.ajax(store_url + currentWayId + '/' + i, {'type':'PUT'}).done(function(){setTimeout("getItem()", 1000)});
 }
 
 function openIn(editor) {
@@ -197,7 +158,7 @@ function openIn(editor) {
     var sw = bounds.getSouthWest();
     var ne = bounds.getNorthEast();
 	if (editor == 'j') { // JOSM
-		var JOSMurl = "http://127.0.0.1:8111/load_and_zoom?left=" + sw.lng + "&right=" + ne.lng + "&top=" + ne.lat + "&bottom=" + sw.lat + "&new_layer=0"
+		var JOSMurl = "http://127.0.0.1:8111/load_and_zoom?left=" + sw.lng + "&right=" + ne.lng + "&top=" + ne.lat + "&bottom=" + sw.lat + "&new_layer=0&select=node" + currentNodeId + ",way" + currentWayId;
 		// Use the .ajax JQ method to load the JOSM link unobtrusively and alert when the JOSM plugin is not running.
 		$.ajax({
 			url: JOSMurl,
