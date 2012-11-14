@@ -20,7 +20,7 @@ class getcandidate:
         conn = psycopg2.connect("host=localhost dbname=deletedways user=osm password=osm")
         cur = conn.cursor()
         if osmid:
-            cur.execute("SELECT ST_AsGeoJSON(geom_way), osmid_way, ST_AsGeoJSON(geom), osmid FROM mr_currentchallenge WHERE osmid = %s", (osmid,))
+            cur.execute("SELECT ST_AsGeoJSON(geom_way), osmid_way, ST_AsGeoJSON(geom), osmid FROM mr_currentchallenge WHERE osmid_way = %s", (osmid,))
         else:
             cur.execute("SELECT ST_AsGeoJSON(geom_way), osmid_way, ST_AsGeoJSON(geom), osmid FROM mr_currentchallenge WHERE fixflag < 3 ORDER BY RANDOM() LIMIT 1")
         recs = cur.fetchall()
