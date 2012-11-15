@@ -12,8 +12,11 @@ Alias /remap /osm/software/remapping-microtask/webapp
 # config for the python script
 
 WSGIScriptAlias /remappingservice /osm/software/remapping-microtask/service/get.py/
-
 Alias /remappingservice/static /osm/software/remapping-microtask/service/static/
+
+WSGIScriptAlias /tremappingservice /osm/software/remapping-microtask/service/tget.py/
+Alias /tremappingservice/static /osm/software/remapping-microtask/service/static/
+
 AddType text/html .py
 
 <Directory /osm/software/remapping-microtask/service/>
