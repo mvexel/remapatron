@@ -1,12 +1,16 @@
+$.ajax({
+	async: false,
+	url: 'js/config.js', 
+	dataType: 'script',
+	success: function(){alert('script loaded')}
+}); // LOAD CONFIGURATION FILE
+
 var map;
 var ajaxRequest;
 var plotlist;
 var plotlayers=[];
-var geojsonLayer = new L.GeoJSON();
-var geojsonPointLayer = new L.GeoJSON();
-var get_url = "http://lima.schaaltreinen.nl/remappingservice/get/";
-var store_url = "http://lima.schaaltreinen.nl/remappingservice/store/";
-var count_url = "http://lima.schaaltreinen.nl/remappingservice/count/";
+if (config.challenge.hasWay) var geojsonLayer = new L.GeoJSON();
+if (config.challenge.hasNode) var geojsonPointLayer = new L.GeoJSON();
 var clickcnt;
 var m1, m2;
 var currentWayId;
@@ -17,17 +21,6 @@ var osmAttrib='Map data © OpenStreetMap contributors'
 var t; 
 var currentNodeId = 0;
 var currentWayId = 0;
-
-var DISABLEKEYBOARDHOOKS = false;
-
-var geojsonMarkerOptions = {
-    radius: 14,
-    fillColor: "#ff7800",
-    color: "#F00",
-    weight: 4,
-    opacity: 1,
-    fillOpacity: 0.0
-};
 
 function getExtent(geojson) {
 	var lats = [], lngs = [];
@@ -68,20 +61,24 @@ function dlgClose() {
 
 
 function getItem() {
-    msg('Faites vos jeux...', 0)
+    msg(config.strings.msgNextChallenge, 0)
     $.getJSON(
-        get_url,
+        config.geojsonserviceurl,
         function(data) {
-			currentWayId = data.features[0].properties['id'];
-			currentNodeId = data.features[1].properties['id'];
+			var i = 0;
+			if (config.challenge.hasWay) currentWayId = data.features[i++].properties['id'];
+			if (config.challenge.hasNode) currentNodeId = data.features[i++].properties['id'];
             var popuphtml = '<big><ul>Tags</ul></big><br />'
             for (tag in data.features[0].properties.tags) {
                 popuphtml += tag + ': ' + data.features[0].properties.tags[tag] + '<br />';
             };
-			geojsonLayer.addData(data.features[0]).bindPopup(popuphtml);//.openPopup();
-			geojsonPointLayer.addData(data.features[1]);
-            var extent = getExtent(data.features[0]);
-			map.fitBounds(extent);
+            i = 0;
+			if (config.challenge.hasWay) {
+				geojsonLayer.addData(data.features[i++]).bindPopup(popuphtml);//.openPopup();
+	            var extent = getExtent(data.features[0]);
+				map.fitBounds(extent);
+			};
+			if (config.challenge.hasNode) geojsonPointLayer.addData(data.features[i++]);
 			var mqurl = 'http://open.mapquestapi.com/nominatim/v1/reverse?format=json&lat=' + map.getCenter().lat + ' &lon=' + map.getCenter().lng;
 			//msg(mqurl, 3);
             msgClose()
@@ -104,13 +101,13 @@ function initmap() {
     osmLayer = new L.TileLayer(osmUrl, {attribution: osmAttrib});
     map.setView(new L.LatLng(40.0, -90.0),17);
     map.addLayer(osmLayer);
-    map.addLayer(geojsonLayer);
-    map.addLayer(geojsonPointLayer);
+    if (config.challenge.hasWay) map.addLayer(geojsonLayer);
+    if (config.challenge.hasPoint) map.addLayer(geojsonPointLayer);
     getItem();
     $.cookie('activelayer', 'osmLayer');
 	
 	// add keyboard hooks
-    if (!DISABLEKEYBOARDHOOKS) {
+    if (config.enablekeyboardhooks) {
         $(document).bind('keydown', function(e){
             switch (e.which) {
                 case 81: //q
@@ -145,13 +142,13 @@ function toggleLayers() {
 }
 
 function nextUp(i) {
-	msg("OK, moving along...",1);
-	$.ajax(store_url + currentWayId + '/' + i, {'type':'PUT'}).done(function(){setTimeout("getItem()", 1000)});
+	msg(config.strings.msgMovingOnToNextChallenge,1);
+	$.ajax(config.storeresulturl + currentWayId + '/' + i, {'type':'PUT'}).done(function(){setTimeout("getItem()", 1000)});
 }
 
 function openIn(editor) {
     if (map.getZoom() < 14){
-        msg("zoom in a little so we don't have to load a huge area from the API.", 3);
+        msg(config.strings.msgZoomInForEdit, 3);
         return false;
     };
     var bounds = map.getBounds();
@@ -187,7 +184,7 @@ function showAbout() {
 
 function updateCounter() {
 	$.getJSON(
-		count_url,
+		config.counturl,
 		function(data) {
 			$('#counter').text(data[0]);
 			$('#hrfix').text(data[1]);
