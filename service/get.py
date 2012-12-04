@@ -7,7 +7,8 @@ import simplejson as json
 urls = (
     '/count/', 'getcount',
     '/store/(.*)/(-*\d+)', 'storeresult',
-    '/get/(.*)', 'getcandidate'
+    '/get/(.*)', 'getcandidate',
+    '/get/bbox/(-*\d+\.\d*)/(-*\d+\.\d*)/(-*\d+\.\d*)/(-*\d+\.\d*)', 'getbbox'
 )
 
 sys.stdout = sys.stderr
@@ -26,6 +27,23 @@ class getcandidate:
         recs = cur.fetchall()
         (way,wayid,point,nodeid) = recs[0]
         out = geojson.FeatureCollection([geojson.Feature(geometry=geojson.loads(way),properties={"id": wayid}),geojson.Feature(geometry=geojson.loads(point),properties={"id": nodeid})])
+        return geojson.dumps(out)
+
+class getbbox:
+    def GET(self, lbx, lby, rtx, rty):
+        if max(abs(rty - lby), abs(rtx - lbx)) > 0.25:
+             print 'bbox too big'
+             return false
+        conn = psycopg2.connect("host=localhost dbname=deletedways user=osm password=osm")
+        cur = conn.cursor()
+        cur.execute("SELECT ST_AsGeoJSON(geom_way), osmid_way, ST_AsGeoJSON(geom), osmid FROM mr_currentchallenge WHERE fixflag < 3 ORDER BY RANDOM() LIMIT 1")
+        recs = cur.fetchall()
+        features = []
+        for rec in recs:
+            (way,wayid,point,nodeid) = rec
+            features.append(geojson.Feature(geometry=geojson.loads(way),properties={"id": wayid}))
+            features.append(geojson.Feature(geometry=geojson.loads(point),properties={"id": nodeid}))
+        out = geojson.FeatureCollection(features)
         return geojson.dumps(out)
 
 class storeresult:        
