@@ -20,12 +20,12 @@ class getcandidate:
         conn = psycopg2.connect("host=localhost dbname=deletedways user=osm password=osm")
         cur = conn.cursor()
         if osmid:
-            cur.execute("SELECT ST_AsGeoJSON(geom_way), osmid_way, ST_AsGeoJSON(geom), osmid FROM mr_currentchallenge WHERE osmid_way = %s", (osmid,))
+            cur.execute("SELECT ST_AsGeoJSON(geom), osmid FROM mr_currentchallenge WHERE osmid = %s", (osmid,))
         else:
-            cur.execute("SELECT ST_AsGeoJSON(geom_way), osmid_way, ST_AsGeoJSON(geom), osmid FROM mr_currentchallenge WHERE fixflag < 3 ORDER BY RANDOM() LIMIT 1")
+            cur.execute("SELECT ST_AsGeoJSON(geom), osmid FROM mr_untaggedwayschallenge WHERE fixflag < 3 ORDER BY RANDOM() LIMIT 1")
         recs = cur.fetchall()
-        (way,wayid,point,nodeid) = recs[0]
-        out = geojson.FeatureCollection([geojson.Feature(geometry=geojson.loads(way),properties={"id": wayid}),geojson.Feature(geometry=geojson.loads(point),properties={"id": nodeid})])
+        (way,wayid) = recs[0]
+        out = geojson.FeatureCollection([geojson.Feature(geometry=geojson.loads(way),properties={"id": wayid})])
         return geojson.dumps(out)
 
 class storeresult:        
