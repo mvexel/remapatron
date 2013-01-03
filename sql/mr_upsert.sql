@@ -9,7 +9,7 @@ DECLARE
 BEGIN 
     UPDATE maproulette SET fixflag = in_fixflag WHERE osmid = in_osmid; 
     IF NOT FOUND THEN 
-    INSERT INTO maproulette values (in_osmid, in_fixflag); 
+    INSERT INTO maproulette (osmid, fixflag) values (in_osmid, in_fixflag); 
     END IF; 
 END; 
 $BODY$
