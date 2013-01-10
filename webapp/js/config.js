@@ -1,7 +1,7 @@
 var config = {
-	geojsonserviceurl: 'http://localhost/mrservice/get/',
-	storeresulturl: 'http://localhost/mrservice/store/',
-	counturl: 'http://localhost/mrservice/count/',
+	geojsonserviceurl: '/mrservice/get/',
+	storeresulturl: '/mrservice/store/',
+	counturl: '/mrservice/count/',
 	enablekeyboardhooks: true,
 	challenge: {
 		hasWay: true,

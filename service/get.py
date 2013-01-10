@@ -27,17 +27,16 @@ class getcandidate:
     def GET(self):
         conn = psycopg2.connect(pg_connstr)
         cur = conn.cursor()
-        cur.execute("SELECT mr_getsomenolaneways()")
+        cur.execute("SELECT * FROM mr_getsomenolaneways()")
         recs = cur.fetchall()
-        out = []
-        for rec in recs: 
-          print rec
-          (gj,osmid) = rec
-          out.append(geojson.FeatureCollection([geojson.Feature(geometry=geojson.loads(gj),properties={"id": osmid})]))
+        features = []
+        for rec in recs:
+          (osmid,gj) = rec
+          features.append(geojson.Feature(osmid, geojson.loads(gj), {'id':osmid}))
           cur.execute("SELECT mr_setlocked(%s, %s)", (datetime.now(), osmid,))
         conn.commit()
         cur.close()
-        return geojson.dumps(out)
+        return geojson.dumps(geojson.FeatureCollection(features))
 
 class storeresult:        
     def PUT(self,osmid,amt):

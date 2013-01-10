@@ -70,24 +70,26 @@ function getItem() {
     config.geojsonserviceurl,
     function(data) {
       var i = 0;
-      if (config.challenge.hasWay) currentWayId = data.features[i++].properties['id'];
-      if (config.challenge.hasNode) currentNodeId = data.features[i++].properties['id'];
-        var popuphtml = '<big><ul>Tags</ul></big><br />'
-        for (tag in data.features[0].properties.tags) {
-          popuphtml += tag + ': ' + data.features[0].properties.tags[tag] + '<br />';
+      for (feature in data.features) {
+        console.log(data.features[feature].geometry.type);
+        if (data.features[feature].geometry.type == 'LineString' && config.challenge.hasWay) {
+          geojsonLayer.addData(data.features[feature]);
+          console.log(geojsonLayer);
+          console.log(data.features[feature]);
+        } else if (data.features[feature].geometry.type == 'Point' && confic.challenge.hasNode) {
+          geojsonPointLayer.addData(data.features[feature]);
         };
-        i = 0;
-      var extent;
+        //console.log(data.features[feature]);
+      }
+      //if (config.challenge.hasWay) currentWayId = data.features[i++].properties['id'];
+      var extent = false;
       if (config.challenge.hasWay) {
-        geojsonLayer.addData(data.features[i++]).bindPopup(popuphtml);//.openPopup();
-        extent = getExtent(data.features[0]);
-        map.fitBounds(extent);
-      };
-      if (config.challenge.hasNode) {
-        geojsonPointLayer.addData(data.features[i++]);
+        console.log(geojsonLayer);
+        map.fitBounds(geojsonLayer.getBounds());
+        extent = true;
+      } else if (config.challenge.hasNode) {
         if (!extent) {
-          extent = getExtent(data.features[0]);
-          map.fitBounds(extent);
+          map.fitBounds(geojsonPointLayer.getBounds());
         };
       };
       var mqurl = 'http://open.mapquestapi.com/nominatim/v1/reverse?format=json&lat=' + map.getCenter().lat + ' &lon=' + map.getCenter().lng;
