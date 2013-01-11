@@ -10,7 +10,6 @@
     <![endif]-->
     <script src="http://cdn.leafletjs.com/leaflet-0.4.5/leaflet.js"></script>
     <script type="text/javascript" src="jquery/jquery-1.7.1.min.js"></script>
-    <script type="text/javascript" src="js/jquery.cookie.js"></script>
     <script type="text/javascript" src="js/maproulette.js"></script>
   </head>
   <body onload=initmap()>
@@ -18,15 +17,14 @@
     <div id="msgBox"></div>
     <div id="dlgBox"></div>
     <div class="banner">   
-        <strong>OPENSTREETMAP US<br /><em>MAPROULETTE</em></strong> 
+      <strong>OPENSTREETMAP US<br /><em>MAPROULETTE</em></strong>
+      <div id="advancedSub">ADVANCED EDITION</div> 
         <div style="font-size:10px">CURRENT CHALLENGE: <span id=challengeTitle></span></div> 
         <div class=button id=about onClick="showAbout()">about / help</div> 
-		<div style="font-size:10px">we're down to <span style='font-weight:bold' id='counter'></span> <span id=challengePlural></span>. Thanks!</div>
+		    <div style="font-size:10px">we're down to <span style='font-weight:bold' id='counter'></span> <span id=challengePlural></span>. Thanks!</div>
         <div style="font-size:10px">fixed in the last hour: <span style='font-weight:bold' id='hrfix'></span> / day: <span style='font-weight:bold' id='dayfix'></span>
-        <div class="button" style="background-color:#3c3" onClick=nextUp(1)>THIS IS NOT AN ERROR <span class=key>q</span></div>
-        <div class="button" style="background-color:#aaa" onClick=nextUp(-1)>I'M NOT SURE / SKIP <span class=key>w</span></div>
-        <div class=button onClick=openIn('j')>EDIT IN JOSM <span class=key>e</span></div>
-        <div class=button onClick=openIn('p')>EDIT IN POTLATCH <span class=key>r</span></div>
+        <div class="button" onClick=nextUp(-1)>SKIP<span class=key>w</span></div>
+        <div class=button onClick=openIn('j')>EDIT (JOSM)<span class=key>e</span></div>
     </div>
   </body>
 </html>

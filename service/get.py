@@ -60,7 +60,7 @@ class getcount:
         result = []
         conn = psycopg2.connect(pg_connstr)
         cur = conn.cursor()
-        cur.execute("insert into remapathonresults values (current_timestamp, (select count(1) from mr_currentchallenge WHERE type = 'motorway' AND fixflag < 3))")
+        cur.execute("insert into remapathonresults values (current_timestamp, (select count(1) from mr_currentchallenge WHERE fixflag < 3))")
         conn.commit()
         cur.execute("select * from remapathonresults order by tstamp desc limit 1")
         rec = cur.fetchone()

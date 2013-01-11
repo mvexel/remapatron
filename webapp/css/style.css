@@ -55,14 +55,14 @@ div.fullscreen{
 
 div.banner {
 	text-align:center;
-	border: 1px solid #666;
+	border: 1px solid #f99;
 	padding:4px;
 	z-index:15;
 	position:absolute;
 	right:10px;
 	width:250px;
 	top:10px;
-	background-color:#fff;
+	background-color:#fcc;
 	-moz-border-radius: 4px;
 	border-radius: 4px;
 }
@@ -74,7 +74,7 @@ div.button {
 	color:black;
 	padding:4px;
 	margin:4px;
-	background-color:#6cf;
+	background-color:#faa;
 	border: 1px solid black;
 	-moz-border-radius: 4px;
 	border-radius: 4px;
@@ -87,7 +87,7 @@ div.button:hover {
 }
 	
 div.button#about {
-	background-color:white;
+	background-color:#f99;
 	font-style:italic;
 }
 
@@ -114,4 +114,10 @@ div.button#about {
     font-size:72px;
     z-index:20;
     text-align:center;
+}
+
+#advancedSub {
+  font-size: smaller;
+  font-style: italic;
+  color: #c00;
 }

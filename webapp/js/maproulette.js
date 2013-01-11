@@ -20,6 +20,8 @@ var osmAttrib='Map data © OpenStreetMap contributors'
 var t; 
 var currentNodeId = 0;
 var currentWayId = 0;
+var waysLoaded = 0;
+var osmwayids = [];
 
 function getExtent(geojson) {
   var lats = [], lngs = [];
@@ -41,12 +43,19 @@ function getExtent(geojson) {
   return new L.LatLngBounds(sw, ne);
 }
 
-function msg(h, t) {
+function msg(h, secs) {
   // displays an info message. if the time is 0, you will have to provide a close button that calls msgClose() yourself.
   clearTimeout(t);
-  $('#msgBox').html(h).fadeIn();
-  $('#msgBox').css("display", "block");
-  if(t!=0) t = setTimeout("msgClose()", t * 1000);
+  if ($('#msgBox').is(':visible')) {
+    if (t > 1000) {
+      $('#msgBox').append('<p>' + h);
+    } else {
+      setTimeout(function(){msg(h,secs)}, 1000);
+    };
+  } else {
+    $('#msgBox').html(h).fadeIn();
+  }
+  t = setTimeout(msgClose, secs*1000);
 }
 
 function dlg(h) {
@@ -65,7 +74,7 @@ function dlgClose() {
 
 
 function getItem() {
-  msg(config.strings.msgNextChallenge, 0)
+  waysLoaded = 0;
   $.getJSON(
     config.geojsonserviceurl,
     function(data) {
@@ -74,8 +83,8 @@ function getItem() {
         console.log(data.features[feature].geometry.type);
         if (data.features[feature].geometry.type == 'LineString' && config.challenge.hasWay) {
           geojsonLayer.addData(data.features[feature]);
-          console.log(geojsonLayer);
-          console.log(data.features[feature]);
+          osmwayids.push(data.features[feature].properties.id);
+          waysLoaded++;
         } else if (data.features[feature].geometry.type == 'Point' && confic.challenge.hasNode) {
           geojsonPointLayer.addData(data.features[feature]);
         };
@@ -92,18 +101,37 @@ function getItem() {
           map.fitBounds(geojsonPointLayer.getBounds());
         };
       };
+      
+      // Reverse geocode our location using the MapQuest RG API
+      var locstr = 'Loaded ' + waysLoaded + ' poor lanecountless ways ';
+      var addComma = false;
       var mqurl = 'http://open.mapquestapi.com/nominatim/v1/reverse?format=json&lat=' + map.getCenter().lat + ' &lon=' + map.getCenter().lng;
       //msg(mqurl, 3);
-        msgClose()
-      $.getJSON(mqurl, 
-      function(data){
-        var locstr = 'We\'re in ';
-        locstr += data.address.county;
-        locstr += data.address.county.toLowerCase().indexOf('county') > -1?'':' County';
-        locstr += ', ' + data.address.state
-        msg(locstr , 3);
-      }
-      );
+      msgClose()
+      $.getJSON(mqurl, function(data){
+        var hasCounty = !(data.address.county == undefined);
+        var hasCity = !(data.address.city == undefined);
+        var hasHamlet = !(data.address.hamlet == undefined);
+        var hasState = !(data.address.state == undefined);
+        var hasCountry = !(data.address.country == undefined);
+        var hasBoundary = !(data.address.boundary == undefined); 
+        if (hasCounty || hasHamlet || hasCity) {
+          locstr += 'in ' + (hasCounty ? data.address.county : (hasCity ? data.address.city: data.address.hamlet));
+          if (hasCounty) locstr += data.address.county.toLowerCase().indexOf('county') > -1?'':' County';
+          addComma = true;
+        };
+        if (hasState) {
+          if (addComma) locstr += ', ';
+          else locstr += 'somewhere in ';
+          locstr += data.address.state;
+          addComma = true;
+        }; 
+        if (addComma) locstr += ', ';
+        else locstr += 'somewhere in ';
+        locstr += (hasCountry ? data.address.country : (hasBoundary ? data.address.boundary : 'the world...'));
+        locstr += '<br />You gonna fix \'em now, boy?!';
+        msg(locstr, 5);
+      });
       updateCounter();
     }
   );
@@ -117,7 +145,6 @@ function initmap() {
   if (config.challenge.hasWay) map.addLayer(geojsonLayer);
   if (config.challenge.hasPoint) map.addLayer(geojsonPointLayer);
   getItem();
-  $.cookie('activelayer', 'osmLayer');
   
   // add keyboard hooks
   if (config.enablekeyboardhooks) {
@@ -155,26 +182,27 @@ function toggleLayers() {
 }
 
 function nextUp(i) {
-  msg(config.strings.msgMovingOnToNextChallenge,1);
+  msg(config.strings.msgMovingOnToNextChallenge, 3);
+  // clear geojson layer
+  if (config.challenge.hasWay) geojsonLayer.clearLayers();
+  if (config.challenge.hasNode) geojsonLayer.clearLayers();
   $.ajax(config.storeresulturl + currentWayId + '/' + i, {'type':'PUT'}).done(function(){setTimeout("getItem()", 1000)});
 }
 
 function openIn(editor) {
-  if (map.getZoom() < 14){
-    msg(config.strings.msgZoomInForEdit, 3);
-    return false;
-  };
-  var bounds = map.getBounds();
-  var sw = bounds.getSouthWest();
-  var ne = bounds.getNorthEast();
   if (editor == 'j') { // JOSM
-    var JOSMurl = "http://127.0.0.1:8111/load_and_zoom?left=" + sw.lng + "&right=" + ne.lng + "&top=" + ne.lat + "&bottom=" + sw.lat + "&new_layer=0&select=node" + currentNodeId + ",way" + currentWayId;
+    console.log(osmwayids);
+    var objlist = "";
+    for (i in osmwayids) {
+      objlist += 'w' + osmwayids[i] + ',';
+    }
+    var JOSMurl = "http://127.0.0.1:8111/load_object?new_layer=false&objects=" + objlist;
     // Use the .ajax JQ method to load the JOSM link unobtrusively and alert when the JOSM plugin is not running.
     $.ajax({
       url: JOSMurl,
       complete: function(t) {
         if (t.status!=200) {
-          msg("JOSM remote control did not respond ("+t.status+"). Do you have JOSM running?", 2);
+          msg("JOSM remote control did not respond ("+t.status+"). Do you have JOSM running?", 3);
         } else {
           setTimeout("confirmRemap('j')", 4000);
         }
