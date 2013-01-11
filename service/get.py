@@ -39,14 +39,16 @@ class getcandidate:
         return geojson.dumps(geojson.FeatureCollection(features))
 
 class storeresult:        
-    def PUT(self,osmid,amt):
+    def PUT(self,osmids,amt):
+        arr = [int(n) for n in osmids.split(',')]
+        print arr
         conn = psycopg2.connect(pg_connstr)
         cur = conn.cursor()
-        if not osmid:
-            return web.badrequest();
+        if len(osmids) == 0:
+            return web.badrequest()
         try:
-            cur.execute("SELECT mr_upsert(%s,%s)", (amt,osmid,))
-            cur.execute("SELECT mr_setlocked(%s, %s)", (datetime.now(), osmid,))
+            cur.execute("SELECT mr_upsert(%s,%s)", (int(amt),arr,))
+            cur.execute("SELECT mr_setlocked(%s, %s)", (datetime.now(), arr,))
             conn.commit()
         except Exception, e:
             print e

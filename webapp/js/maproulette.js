@@ -186,7 +186,7 @@ function nextUp(i) {
   // clear geojson layer
   if (config.challenge.hasWay) geojsonLayer.clearLayers();
   if (config.challenge.hasNode) geojsonLayer.clearLayers();
-  $.ajax(config.storeresulturl + currentWayId + '/' + i, {'type':'PUT'}).done(function(){setTimeout("getItem()", 1000)});
+  $.ajax(config.storeresulturl + osmwayids.join() + '/' + i, {'type':'PUT'}).done(function(){setTimeout("getItem()", 1000)});
 }
 
 function openIn(editor) {

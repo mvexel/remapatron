@@ -9,6 +9,23 @@ SET check_function_bodies = false;
 SET client_min_messages = warning;
 
 --
+-- Name: maproulette; Type: DATABASE; Schema: -; Owner: osm
+--
+
+CREATE DATABASE maproulette WITH TEMPLATE = template0 ENCODING = 'UTF8' LC_COLLATE = 'en_US.UTF-8' LC_CTYPE = 'en_US.UTF-8';
+
+
+ALTER DATABASE maproulette OWNER TO osm;
+
+\connect maproulette
+
+SET statement_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SET check_function_bodies = false;
+SET client_min_messages = warning;
+
+--
 -- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
 --
 
@@ -20,20 +37,6 @@ CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
 --
 
 COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
-
-
---
--- Name: hstore; Type: EXTENSION; Schema: -; Owner: 
---
-
-CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA public;
-
-
---
--- Name: EXTENSION hstore; Type: COMMENT; Schema: -; Owner: 
---
-
-COMMENT ON EXTENSION hstore IS 'data type for storing sets of (key, value) pairs';
 
 
 SET search_path = public, pg_catalog;
@@ -435,6 +438,18 @@ CREATE TYPE gidx (
 
 
 ALTER TYPE public.gidx OWNER TO osm;
+
+--
+-- Name: nolaneway; Type: TYPE; Schema: public; Owner: osm
+--
+
+CREATE TYPE nolaneway AS (
+	osmid bigint,
+	gj text
+);
+
+
+ALTER TYPE public.nolaneway OWNER TO osm;
 
 --
 -- Name: pgis_abs; Type: SHELL TYPE; Schema: public; Owner: osm
@@ -854,7 +869,7 @@ DECLARE
   
 BEGIN
   
-  RAISE DEBUG '%,%', cur_path, ST_GeometryType(the_geom);
+  -- RAISE DEBUG '%,%', cur_path, ST_GeometryType(the_geom);
 
   -- Special case collections : iterate and return the DumpPoints of the geometries
 
@@ -1201,7 +1216,7 @@ BEGIN
 
 
 	-- Verify dimension
-	IF ( (new_dim >4) OR (new_dim <0) ) THEN
+	IF ( (new_dim >4) OR (new_dim <2) ) THEN
 		RAISE EXCEPTION 'invalid dimension';
 		RETURN 'fail';
 	END IF;
@@ -2660,19 +2675,138 @@ $$;
 ALTER FUNCTION public.longtransactionsenabled() OWNER TO osm;
 
 --
--- Name: osmosisupdate(); Type: FUNCTION; Schema: public; Owner: osm
+-- Name: mr_donesince(integer); Type: FUNCTION; Schema: public; Owner: osm
 --
 
-CREATE FUNCTION osmosisupdate() RETURNS void
+CREATE FUNCTION mr_donesince(in_interval integer) RETURNS integer
     LANGUAGE plpgsql
     AS $$
-DECLARE
+  DECLARE 
+	cmd text;
+	result integer;
 BEGIN
+	cmd := 'SELECT 
+		(SELECT mainroads FROM remapathonresults ORDER BY tstamp DESC LIMIT 1) - 
+		(SELECT mainroads FROM remapathonresults WHERE tstamp < NOW() - INTERVAL ''' 
+		|| in_interval || 
+		'HOUR'' ORDER BY tstamp DESC LIMIT 1);';
+	EXECUTE cmd INTO result;
+	RETURN -result;
 END;
 $$;
 
 
-ALTER FUNCTION public.osmosisupdate() OWNER TO osm;
+ALTER FUNCTION public.mr_donesince(in_interval integer) OWNER TO osm;
+
+--
+-- Name: mr_getsomenolaneways(); Type: FUNCTION; Schema: public; Owner: osm
+--
+
+CREATE FUNCTION mr_getsomenolaneways() RETURNS SETOF nolaneway
+    LANGUAGE plpgsql
+    AS $$ 
+DECLARE
+BEGIN
+  RETURN QUERY (
+  WITH initialq AS ( 
+    SELECT osmid, geom FROM mr_currentchallenge
+    WHERE fixflag < 3 AND (EXTRACT(EPOCH FROM now() - COALESCE(locked, (now() + interval '1 week'))) / 3600) < 0 
+    LIMIT 1) 
+  SELECT mr_currentchallenge.osmid, ST_AsGeoJSON(mr_currentchallenge.geom) FROM mr_currentchallenge, initialq
+  WHERE initialq.geom <#> mr_currentchallenge.geom < 0.01
+  AND fixflag < 3 
+  AND (EXTRACT(EPOCH FROM now() - COALESCE(locked, (now() + interval '1 week'))) / 3600) < 0)
+  LIMIT 25;
+  RETURN;
+END;
+$$;
+
+
+ALTER FUNCTION public.mr_getsomenolaneways() OWNER TO osm;
+
+--
+-- Name: mr_setlocked(timestamp without time zone, bigint); Type: FUNCTION; Schema: public; Owner: osm
+--
+
+CREATE FUNCTION mr_setlocked(in_t timestamp without time zone, in_osmid bigint) RETURNS void
+    LANGUAGE plpgsql
+    AS $$ 
+DECLARE 
+BEGIN 
+    UPDATE maproulette SET locked = in_t WHERE osmid = in_osmid; 
+    IF NOT FOUND THEN 
+    INSERT INTO maproulette (osmid, locked) values (in_osmid, in_t); 
+    END IF; 
+END; 
+$$;
+
+
+ALTER FUNCTION public.mr_setlocked(in_t timestamp without time zone, in_osmid bigint) OWNER TO osm;
+
+--
+-- Name: mr_setlocked(timestamp without time zone, bigint[]); Type: FUNCTION; Schema: public; Owner: osm
+--
+
+CREATE FUNCTION mr_setlocked(in_t timestamp without time zone, in_osmid bigint[]) RETURNS void
+    LANGUAGE plpgsql
+    AS $$ 
+DECLARE 
+  i integer;
+BEGIN 
+  foreach i in array in_osmid
+  loop
+    UPDATE maproulette SET locked = in_t WHERE osmid = i; 
+    IF NOT FOUND THEN 
+    INSERT INTO maproulette (osmid, locked) values (i, in_t); 
+    END IF;
+  end loop; 
+END; 
+$$;
+
+
+ALTER FUNCTION public.mr_setlocked(in_t timestamp without time zone, in_osmid bigint[]) OWNER TO osm;
+
+--
+-- Name: mr_upsert(integer, bigint); Type: FUNCTION; Schema: public; Owner: osm
+--
+
+CREATE FUNCTION mr_upsert(in_fixflag integer, in_osmid bigint) RETURNS void
+    LANGUAGE plpgsql
+    AS $$ 
+DECLARE 
+BEGIN 
+    UPDATE maproulette SET fixflag = in_fixflag WHERE osmid = in_osmid; 
+    IF NOT FOUND THEN 
+    INSERT INTO maproulette (osmid, fixflag) values (in_osmid, in_fixflag); 
+    END IF; 
+END; 
+$$;
+
+
+ALTER FUNCTION public.mr_upsert(in_fixflag integer, in_osmid bigint) OWNER TO osm;
+
+--
+-- Name: mr_upsert(integer, bigint[]); Type: FUNCTION; Schema: public; Owner: osm
+--
+
+CREATE FUNCTION mr_upsert(in_fixflag integer, in_osmid bigint[]) RETURNS void
+    LANGUAGE plpgsql
+    AS $$ 
+DECLARE
+  i integer; 
+BEGIN 
+  FOR i IN 1 .. array_upper(in_osmid, 1)
+  LOOP
+    UPDATE maproulette SET fixflag = in_fixflag WHERE osmid = in_osmid[i]; 
+    IF NOT FOUND THEN 
+      INSERT INTO maproulette (osmid, fixflag) values (in_osmid[i], in_fixflag); 
+    END IF; 
+  END LOOP;
+END; 
+$$;
+
+
+ALTER FUNCTION public.mr_upsert(in_fixflag integer, in_osmid bigint[]) OWNER TO osm;
 
 --
 -- Name: pgis_geometry_accum_finalfn(pgis_abs); Type: FUNCTION; Schema: public; Owner: osm
@@ -3095,7 +3229,7 @@ BEGIN
 	EXCEPTION
 		WHEN undefined_function THEN
 			rast_scr_ver := NULL;
-			RAISE NOTICE 'Function postgis_raster_scripts_installed() not found. Is raster support enabled and topology.sql installed?';
+			RAISE NOTICE 'Function postgis_raster_scripts_installed() not found. Is raster support enabled and rtpostgis.sql installed?';
 	END;
 
 	BEGIN
@@ -3103,7 +3237,7 @@ BEGIN
 	EXCEPTION
 		WHEN undefined_function THEN
 			rast_lib_ver := NULL;
-			RAISE NOTICE 'Function postgis_raster_lib_version() not found. Is raster support enabled and topology.sql installed?';
+			RAISE NOTICE 'Function postgis_raster_lib_version() not found. Is raster support enabled and rtpostgis.sql installed?';
 	END;
 
 	fullver = 'POSTGIS="' || libver;
@@ -3271,7 +3405,7 @@ ALTER FUNCTION public.postgis_proj_version() OWNER TO osm;
 
 CREATE FUNCTION postgis_scripts_build_date() RETURNS text
     LANGUAGE sql IMMUTABLE
-    AS $$SELECT '2012-04-04 15:32:06'::text AS version$$;
+    AS $$SELECT '2012-12-05 01:56:28'::text AS version$$;
 
 
 ALTER FUNCTION public.postgis_scripts_build_date() OWNER TO osm;
@@ -3282,7 +3416,7 @@ ALTER FUNCTION public.postgis_scripts_build_date() OWNER TO osm;
 
 CREATE FUNCTION postgis_scripts_installed() RETURNS text
     LANGUAGE sql IMMUTABLE
-    AS $$ SELECT '2.0.0'::text || ' r' || 9605::text AS version $$;
+    AS $$ SELECT '2.0.2'::text || ' r' || 10789::text AS version $$;
 
 
 ALTER FUNCTION public.postgis_scripts_installed() OWNER TO osm;
@@ -7573,95 +7707,6 @@ $_$;
 ALTER FUNCTION public.unlockrows(text) OWNER TO osm;
 
 --
--- Name: unnest_bbox_way_nodes(); Type: FUNCTION; Schema: public; Owner: osm
---
-
-CREATE FUNCTION unnest_bbox_way_nodes() RETURNS void
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-	previousId ways.id%TYPE;
-	currentId ways.id%TYPE;
-	result bigint[];
-	wayNodeRow way_nodes%ROWTYPE;
-	wayNodes ways.nodes%TYPE;
-BEGIN
-	FOR wayNodes IN SELECT bw.nodes FROM bbox_ways bw LOOP
-		FOR i IN 1 .. array_upper(wayNodes, 1) LOOP
-			INSERT INTO bbox_way_nodes (id) VALUES (wayNodes[i]);
-		END LOOP;
-	END LOOP;
-END;
-$$;
-
-
-ALTER FUNCTION public.unnest_bbox_way_nodes() OWNER TO osm;
-
---
--- Name: update_remapping_status(); Type: FUNCTION; Schema: public; Owner: osm
---
-
-CREATE FUNCTION update_remapping_status() RETURNS void
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-	deletedway RECORD;
-	updatedrecord RECORD;
-	counter numeric;
-	total numeric;
-	start timestamp;
-	current timestamp;
-	duration numeric;
-BEGIN
-	-- EMPTY REMAPPING RECORDS
-	UPDATE deletedways SET (remappinginarea, likelyremapped, remappedwayid, recentwaysinarea) = (null, null, null, null);
-	start := timeofday();
-	counter := 0;
-	--total := 1000;
-	--FOR deletedway IN SELECT * FROM deletedways ORDER BY RANDOM() LIMIT 1000 LOOP
-	SELECT count(1) FROM deletedways INTO total;
-	FOR deletedway IN SELECT * FROM deletedways LOOP
-		RAISE NOTICE 'Updating remapped status for %', deletedway.id;
-		WITH candidates AS (
-			SELECT 
-				 a.id, 
-				 a.tags->'highway' AS type, 
-				 b.tags->'highway' AS deletedtype, 
-					 ST_HausdorffDistance(ST_Intersection(ST_Buffer(ST_Transform(a.linestring, 3857), 20), ST_Transform(b.linestring, 3857)), ST_Transform(b.linestring, 3857)) as hausdorff,
-					 ABS(ST_HausdorffDistance(ST_Intersection(ST_Buffer(ST_Transform(a.linestring, 3857), 20), ST_Transform(b.linestring, 3857)), ST_Transform(b.linestring, 3857))) < ST_Length(st_transform(b.linestring, 3857)) * 0.1 as hasclosegeom,
-					 a.tstamp
-			FROM 
-				 ways a, deletedways b 
-			WHERE 
-				 a.tags?'highway' 
-			AND 
-				 ST_Intersects(ST_Envelope(b.linestring), a.linestring) 
-			AND 
-				 a.tstamp > DATE '2012-07-17' 
-			AND 
-				 b.id =  deletedway.id
-			ORDER BY 
-				 hausdorff
-		)
-		UPDATE deletedways
-		SET (remappinginarea, likelyremapped, remappedwayid, recentwaysinarea) = (
-			(SELECT count(1) FROM candidates) > 0, 
-			(SELECT count(1) FROM candidates WHERE hasclosegeom = true) > 0, 
-			(SELECT id FROM candidates WHERE hasclosegeom = true LIMIT 1), 
-			array((SELECT id FROM candidates WHERE hasclosegeom = false)))
-		WHERE id = deletedway.id;
-		counter := counter + 1;
-		current := timeofday();
-		duration := extract(epoch from current) - extract(epoch from start);
-		RAISE NOTICE ', took %, % %%, approx % mins to go', round(duration, 1), round(counter/total * 100, 1), round(((duration / (counter / total)) / 60) - (duration / 60), 1);
-	END LOOP;
-END;
-$$;
-
-
-ALTER FUNCTION public.update_remapping_status() OWNER TO osm;
-
---
 -- Name: updategeometrysrid(character varying, character varying, integer); Type: FUNCTION; Schema: public; Owner: osm
 --
 
@@ -8561,63 +8606,12 @@ CREATE CAST (text AS public.geometry) WITH FUNCTION public.geometry(text) AS IMP
 
 SET search_path = public, pg_catalog;
 
-SET default_tablespace = '';
-
-SET default_with_oids = false;
-
---
--- Name: buffers; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
---
-
-CREATE TABLE buffers (
-    id bigint,
-    tstamp timestamp without time zone,
-    buffer geometry
-);
-
-
-ALTER TABLE public.buffers OWNER TO osm;
-
---
--- Name: deletedwayids; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
---
-
-CREATE TABLE deletedwayids (
-    id bigint
-);
-
-
-ALTER TABLE public.deletedwayids OWNER TO osm;
-
---
--- Name: deletedways; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
---
-
-CREATE TABLE deletedways (
-    id bigint,
-    version integer,
-    user_id integer,
-    tstamp timestamp without time zone,
-    changeset_id bigint,
-    tags hstore,
-    nodes bigint[],
-    linestring geometry(LineString,4326),
-    remappinginarea boolean,
-    likelyremapped boolean,
-    remappedwayid bigint,
-    recentwaysinarea bigint[],
-    remappedflag smallint
-);
-
-
-ALTER TABLE public.deletedways OWNER TO osm;
-
 --
 -- Name: geography_columns; Type: VIEW; Schema: public; Owner: osm
 --
 
 CREATE VIEW geography_columns AS
-    SELECT current_database() AS f_table_catalog, n.nspname AS f_table_schema, c.relname AS f_table_name, a.attname AS f_geography_column, postgis_typmod_dims(a.atttypmod) AS coord_dimension, postgis_typmod_srid(a.atttypmod) AS srid, postgis_typmod_type(a.atttypmod) AS type FROM pg_class c, pg_attribute a, pg_type t, pg_namespace n WHERE ((((((t.typname = 'geography'::name) AND (a.attisdropped = false)) AND (a.atttypid = t.oid)) AND (a.attrelid = c.oid)) AND (c.relnamespace = n.oid)) AND (NOT pg_is_other_temp_schema(c.relnamespace)));
+    SELECT current_database() AS f_table_catalog, n.nspname AS f_table_schema, c.relname AS f_table_name, a.attname AS f_geography_column, postgis_typmod_dims(a.atttypmod) AS coord_dimension, postgis_typmod_srid(a.atttypmod) AS srid, postgis_typmod_type(a.atttypmod) AS type FROM pg_class c, pg_attribute a, pg_type t, pg_namespace n WHERE (((((((t.typname = 'geography'::name) AND (a.attisdropped = false)) AND (a.atttypid = t.oid)) AND (a.attrelid = c.oid)) AND (c.relnamespace = n.oid)) AND (NOT pg_is_other_temp_schema(c.relnamespace))) AND has_table_privilege(c.oid, 'SELECT'::text));
 
 
 ALTER TABLE public.geography_columns OWNER TO osm;
@@ -8627,81 +8621,64 @@ ALTER TABLE public.geography_columns OWNER TO osm;
 --
 
 CREATE VIEW geometry_columns AS
-    SELECT (current_database())::character varying(256) AS f_table_catalog, (n.nspname)::character varying(256) AS f_table_schema, (c.relname)::character varying(256) AS f_table_name, (a.attname)::character varying(256) AS f_geometry_column, COALESCE(NULLIF(postgis_typmod_dims(a.atttypmod), 2), postgis_constraint_dims((n.nspname)::text, (c.relname)::text, (a.attname)::text), 2) AS coord_dimension, COALESCE(NULLIF(postgis_typmod_srid(a.atttypmod), 0), postgis_constraint_srid((n.nspname)::text, (c.relname)::text, (a.attname)::text), 0) AS srid, (replace(replace(COALESCE(NULLIF(upper(postgis_typmod_type(a.atttypmod)), 'GEOMETRY'::text), (postgis_constraint_type((n.nspname)::text, (c.relname)::text, (a.attname)::text))::text, 'GEOMETRY'::text), 'ZM'::text, ''::text), 'Z'::text, ''::text))::character varying(30) AS type FROM pg_class c, pg_attribute a, pg_type t, pg_namespace n WHERE ((((((((t.typname = 'geometry'::name) AND (a.attisdropped = false)) AND (a.atttypid = t.oid)) AND (a.attrelid = c.oid)) AND (c.relnamespace = n.oid)) AND ((c.relkind = 'r'::"char") OR (c.relkind = 'v'::"char"))) AND (NOT pg_is_other_temp_schema(c.relnamespace))) AND (NOT ((n.nspname = 'public'::name) AND (c.relname = 'raster_columns'::name))));
+    SELECT (current_database())::character varying(256) AS f_table_catalog, (n.nspname)::character varying(256) AS f_table_schema, (c.relname)::character varying(256) AS f_table_name, (a.attname)::character varying(256) AS f_geometry_column, COALESCE(NULLIF(postgis_typmod_dims(a.atttypmod), 2), postgis_constraint_dims((n.nspname)::text, (c.relname)::text, (a.attname)::text), 2) AS coord_dimension, COALESCE(NULLIF(postgis_typmod_srid(a.atttypmod), 0), postgis_constraint_srid((n.nspname)::text, (c.relname)::text, (a.attname)::text), 0) AS srid, (replace(replace(COALESCE(NULLIF(upper(postgis_typmod_type(a.atttypmod)), 'GEOMETRY'::text), (postgis_constraint_type((n.nspname)::text, (c.relname)::text, (a.attname)::text))::text, 'GEOMETRY'::text), 'ZM'::text, ''::text), 'Z'::text, ''::text))::character varying(30) AS type FROM pg_class c, pg_attribute a, pg_type t, pg_namespace n WHERE (((((((((t.typname = 'geometry'::name) AND (a.attisdropped = false)) AND (a.atttypid = t.oid)) AND (a.attrelid = c.oid)) AND (c.relnamespace = n.oid)) AND ((c.relkind = 'r'::"char") OR (c.relkind = 'v'::"char"))) AND (NOT pg_is_other_temp_schema(c.relnamespace))) AND (NOT ((n.nspname = 'public'::name) AND (c.relname = 'raster_columns'::name)))) AND has_table_privilege(c.oid, 'SELECT'::text));
 
 
 ALTER TABLE public.geometry_columns OWNER TO osm;
 
+SET default_tablespace = '';
+
+SET default_with_oids = false;
+
 --
--- Name: highwayhierarchy; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
+-- Name: maproulette; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
 --
 
-CREATE TABLE highwayhierarchy (
-    rank smallint,
-    name character varying(50)
+CREATE TABLE maproulette (
+    osmid bigint NOT NULL,
+    fixflag integer,
+    locked timestamp without time zone
 );
 
 
-ALTER TABLE public.highwayhierarchy OWNER TO osm;
+ALTER TABLE public.maproulette OWNER TO osm;
 
 --
--- Name: ids; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
+-- Name: tnav_ways_no_lanes; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
 --
 
-CREATE TABLE ids (
-    id bigint
+CREATE TABLE tnav_ways_no_lanes (
+    id bigint,
+    type character varying(64),
+    linestring geometry
 );
 
 
-ALTER TABLE public.ids OWNER TO osm;
+ALTER TABLE public.tnav_ways_no_lanes OWNER TO postgres;
 
 --
--- Name: nodes; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
+-- Name: COLUMN tnav_ways_no_lanes.id; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-CREATE TABLE nodes (
-    id bigint NOT NULL,
-    version integer NOT NULL,
-    user_id integer NOT NULL,
-    tstamp timestamp without time zone NOT NULL,
-    changeset_id bigint NOT NULL,
-    tags hstore,
-    geom geometry(Point,4326)
-);
+COMMENT ON COLUMN tnav_ways_no_lanes.id IS 'way id';
 
-
-ALTER TABLE public.nodes OWNER TO osm;
 
 --
--- Name: relation_members; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
+-- Name: COLUMN tnav_ways_no_lanes.type; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-CREATE TABLE relation_members (
-    relation_id bigint NOT NULL,
-    member_id bigint NOT NULL,
-    member_type character(1) NOT NULL,
-    member_role text NOT NULL,
-    sequence_id integer NOT NULL
-);
+COMMENT ON COLUMN tnav_ways_no_lanes.type IS 'way type';
 
-
-ALTER TABLE public.relation_members OWNER TO osm;
 
 --
--- Name: relations; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
+-- Name: mr_currentchallenge; Type: VIEW; Schema: public; Owner: osm
 --
 
-CREATE TABLE relations (
-    id bigint NOT NULL,
-    version integer NOT NULL,
-    user_id integer NOT NULL,
-    tstamp timestamp without time zone NOT NULL,
-    changeset_id bigint NOT NULL,
-    tags hstore
-);
+CREATE VIEW mr_currentchallenge AS
+    SELECT a.id AS osmid, a.type, a.linestring AS geom, b.locked, COALESCE(b.fixflag, 0) AS fixflag FROM (tnav_ways_no_lanes a LEFT JOIN maproulette b ON ((a.id = b.osmid)));
 
 
-ALTER TABLE public.relations OWNER TO osm;
+ALTER TABLE public.mr_currentchallenge OWNER TO osm;
 
 --
 -- Name: remapathonresults; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
@@ -8719,15 +8696,17 @@ CREATE TABLE remapathonresults (
 ALTER TABLE public.remapathonresults OWNER TO osm;
 
 --
--- Name: schema_info; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
+-- Name: sample; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
 --
 
-CREATE TABLE schema_info (
-    version integer NOT NULL
+CREATE TABLE sample (
+    id bigint,
+    type character varying(64),
+    linestring geometry
 );
 
 
-ALTER TABLE public.schema_info OWNER TO osm;
+ALTER TABLE public.sample OWNER TO osm;
 
 --
 -- Name: spatial_ref_sys; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
@@ -8746,192 +8725,40 @@ CREATE TABLE spatial_ref_sys (
 ALTER TABLE public.spatial_ref_sys OWNER TO osm;
 
 --
--- Name: state10; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
+-- Name: tnav_connectivity_errors; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
 --
 
-CREATE TABLE state10 (
-    gid integer NOT NULL,
-    region10 character varying(2),
-    division10 character varying(2),
-    statefp10 character varying(2),
-    statens10 character varying(8),
-    geoid10 character varying(2),
-    stusps10 character varying(2),
-    name10 character varying(100),
-    lsad10 character varying(2),
-    mtfcc10 character varying(5),
-    funcstat10 character varying(1),
-    aland10 double precision,
-    awater10 double precision,
-    intptlat10 character varying(11),
-    intptlon10 character varying(12),
-    geom geometry(MultiPolygon,4326)
+CREATE TABLE tnav_connectivity_errors (
+    deadend_node_id bigint,
+    the_geom geometry,
+    deadend_way_id bigint,
+    deadend_geom geometry,
+    distance_min double precision,
+    closeest_way_id bigint,
+    closest_way_geom geometry
 );
 
 
-ALTER TABLE public.state10 OWNER TO osm;
+ALTER TABLE public.tnav_connectivity_errors OWNER TO postgres;
 
 --
--- Name: state10_gid_seq; Type: SEQUENCE; Schema: public; Owner: osm
+-- Name: tnav_untagged_ways; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
 --
 
-CREATE SEQUENCE state10_gid_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.state10_gid_seq OWNER TO osm;
-
---
--- Name: state10_gid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: osm
---
-
-ALTER SEQUENCE state10_gid_seq OWNED BY state10.gid;
-
-
---
--- Name: test; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
---
-
-CREATE TABLE test (
-    id bigint,
-    way geometry(LineString,4326)
+CREATE TABLE tnav_untagged_ways (
+    wayid bigint,
+    linestring geometry
 );
 
 
-ALTER TABLE public.test OWNER TO osm;
+ALTER TABLE public.tnav_untagged_ways OWNER TO postgres;
 
 --
--- Name: testdel; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
+-- Name: pkey_osmid; Type: CONSTRAINT; Schema: public; Owner: osm; Tablespace: 
 --
 
-CREATE TABLE testdel (
-    id bigint,
-    delway geometry(LineString,4326)
-);
-
-
-ALTER TABLE public.testdel OWNER TO osm;
-
---
--- Name: testint; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
---
-
-CREATE TABLE testint (
-    id bigint,
-    intersection geometry
-);
-
-
-ALTER TABLE public.testint OWNER TO osm;
-
---
--- Name: users; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
---
-
-CREATE TABLE users (
-    id integer NOT NULL,
-    name text NOT NULL
-);
-
-
-ALTER TABLE public.users OWNER TO osm;
-
---
--- Name: way_nodes; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
---
-
-CREATE TABLE way_nodes (
-    way_id bigint NOT NULL,
-    node_id bigint NOT NULL,
-    sequence_id integer NOT NULL
-);
-
-
-ALTER TABLE public.way_nodes OWNER TO osm;
-
---
--- Name: ways; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
---
-
-CREATE TABLE ways (
-    id bigint NOT NULL,
-    version integer NOT NULL,
-    user_id integer NOT NULL,
-    tstamp timestamp without time zone NOT NULL,
-    changeset_id bigint NOT NULL,
-    tags hstore,
-    nodes bigint[],
-    linestring geometry(LineString,4326)
-);
-
-
-ALTER TABLE public.ways OWNER TO osm;
-
---
--- Name: gid; Type: DEFAULT; Schema: public; Owner: osm
---
-
-ALTER TABLE ONLY state10 ALTER COLUMN gid SET DEFAULT nextval('state10_gid_seq'::regclass);
-
-
---
--- Name: pk_nodes; Type: CONSTRAINT; Schema: public; Owner: osm; Tablespace: 
---
-
-ALTER TABLE ONLY nodes
-    ADD CONSTRAINT pk_nodes PRIMARY KEY (id);
-
-
---
--- Name: pk_relation_members; Type: CONSTRAINT; Schema: public; Owner: osm; Tablespace: 
---
-
-ALTER TABLE ONLY relation_members
-    ADD CONSTRAINT pk_relation_members PRIMARY KEY (relation_id, sequence_id);
-
-
---
--- Name: pk_relations; Type: CONSTRAINT; Schema: public; Owner: osm; Tablespace: 
---
-
-ALTER TABLE ONLY relations
-    ADD CONSTRAINT pk_relations PRIMARY KEY (id);
-
-
---
--- Name: pk_schema_info; Type: CONSTRAINT; Schema: public; Owner: osm; Tablespace: 
---
-
-ALTER TABLE ONLY schema_info
-    ADD CONSTRAINT pk_schema_info PRIMARY KEY (version);
-
-
---
--- Name: pk_users; Type: CONSTRAINT; Schema: public; Owner: osm; Tablespace: 
---
-
-ALTER TABLE ONLY users
-    ADD CONSTRAINT pk_users PRIMARY KEY (id);
-
-
---
--- Name: pk_way_nodes; Type: CONSTRAINT; Schema: public; Owner: osm; Tablespace: 
---
-
-ALTER TABLE ONLY way_nodes
-    ADD CONSTRAINT pk_way_nodes PRIMARY KEY (way_id, sequence_id);
-
-
---
--- Name: pk_ways; Type: CONSTRAINT; Schema: public; Owner: osm; Tablespace: 
---
-
-ALTER TABLE ONLY ways
-    ADD CONSTRAINT pk_ways PRIMARY KEY (id);
+ALTER TABLE ONLY maproulette
+    ADD CONSTRAINT pkey_osmid PRIMARY KEY (osmid);
 
 
 --
@@ -8943,57 +8770,24 @@ ALTER TABLE ONLY spatial_ref_sys
 
 
 --
--- Name: state10_pkey; Type: CONSTRAINT; Schema: public; Owner: osm; Tablespace: 
+-- Name: tav_untagged_ways_geom_idx; Type: INDEX; Schema: public; Owner: postgres; Tablespace: 
 --
 
-ALTER TABLE ONLY state10
-    ADD CONSTRAINT state10_pkey PRIMARY KEY (gid);
-
-
---
--- Name: idx_deletedways_geom; Type: INDEX; Schema: public; Owner: osm; Tablespace: 
---
-
-CREATE INDEX idx_deletedways_geom ON deletedways USING gist (linestring);
+CREATE INDEX tav_untagged_ways_geom_idx ON tnav_untagged_ways USING gist (linestring);
 
 
 --
--- Name: idx_nodes_geom; Type: INDEX; Schema: public; Owner: osm; Tablespace: 
+-- Name: tnav_ways_no_lanes_geom_idx; Type: INDEX; Schema: public; Owner: postgres; Tablespace: 
 --
 
-CREATE INDEX idx_nodes_geom ON nodes USING gist (geom);
-
-ALTER TABLE nodes CLUSTER ON idx_nodes_geom;
+CREATE INDEX tnav_ways_no_lanes_geom_idx ON tnav_ways_no_lanes USING gist (linestring);
 
 
 --
--- Name: idx_relation_members_member_id_and_type; Type: INDEX; Schema: public; Owner: osm; Tablespace: 
+-- Name: tnav_ways_no_lanes_type_idx; Type: INDEX; Schema: public; Owner: postgres; Tablespace: 
 --
 
-CREATE INDEX idx_relation_members_member_id_and_type ON relation_members USING btree (member_id, member_type);
-
-
---
--- Name: idx_way_nodes_node_id; Type: INDEX; Schema: public; Owner: osm; Tablespace: 
---
-
-CREATE INDEX idx_way_nodes_node_id ON way_nodes USING btree (node_id);
-
-
---
--- Name: idx_ways_linestring; Type: INDEX; Schema: public; Owner: osm; Tablespace: 
---
-
-CREATE INDEX idx_ways_linestring ON ways USING gist (linestring);
-
-ALTER TABLE ways CLUSTER ON idx_ways_linestring;
-
-
---
--- Name: state10_geom_gist; Type: INDEX; Schema: public; Owner: osm; Tablespace: 
---
-
-CREATE INDEX state10_geom_gist ON state10 USING gist (geom);
+CREATE INDEX tnav_ways_no_lanes_type_idx ON tnav_ways_no_lanes USING btree (type);
 
 
 --
