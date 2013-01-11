@@ -196,7 +196,7 @@ function openIn(editor) {
     for (i in osmwayids) {
       objlist += 'w' + osmwayids[i] + ',';
     }
-    var JOSMurl = "http://127.0.0.1:8111/load_object?new_layer=false&objects=" + objlist;
+    var JOSMurl = "http://127.0.0.1:8111/load_object?new_layer=true&objects=" + objlist;
     // Use the .ajax JQ method to load the JOSM link unobtrusively and alert when the JOSM plugin is not running.
     $.ajax({
       url: JOSMurl,
