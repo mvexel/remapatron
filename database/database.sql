@@ -12,12 +12,12 @@ SET client_min_messages = warning;
 -- Name: osm; Type: DATABASE; Schema: -; Owner: osm
 --
 
-CREATE DATABASE osm WITH TEMPLATE = template0 ENCODING = 'UTF8' LC_COLLATE = 'en_US.UTF-8' LC_CTYPE = 'en_US.UTF-8';
+CREATE DATABASE maproulette WITH TEMPLATE = template0 ENCODING = 'UTF8' LC_COLLATE = 'en_US.UTF-8' LC_CTYPE = 'en_US.UTF-8';
 
 
-ALTER DATABASE osm OWNER TO osm;
+ALTER DATABASE maproulette OWNER TO osm;
 
-\connect osm
+\connect maproulette
 
 SET statement_timeout = 0;
 SET client_encoding = 'UTF8';
