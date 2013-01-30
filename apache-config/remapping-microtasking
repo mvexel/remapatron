@@ -2,24 +2,24 @@
 
 # webapp
 
-Alias /remap /osm/software/remapping-microtask/webapp
+Alias /remap /home/ubuntu/remapatron/webapp
 
-<Directory /osm/software/remapping-microtask/webapp>
+<Directory /home/ubuntu/remapatron/webapp>
     Order deny,allow
     Allow from all
 </Directory>
 
 # config for the python script
 
-WSGIScriptAlias /remappingservice /osm/software/remapping-microtask/service/get.py/
-Alias /remappingservice/static /osm/software/remapping-microtask/service/static/
+WSGIScriptAlias /remappingservice /home/ubuntu/remapatron/service/get.py/
+Alias /remappingservice/static /home/ubuntu/remapatron/service/static/
 
-WSGIScriptAlias /tremappingservice /osm/software/remapping-microtask/service/tget.py/
-Alias /tremappingservice/static /osm/software/remapping-microtask/service/static/
+WSGIScriptAlias /tremappingservice /home/ubuntu/remapatron/service/tget.py/
+Alias /tremappingservice/static /home/ubuntu/remapatron/service/static/
 
 AddType text/html .py
 
-<Directory /osm/software/remapping-microtask/service/>
+<Directory /home/ubuntu/remapatron/service/>
         Order Allow,Deny
         Allow from all
 </Directory>
