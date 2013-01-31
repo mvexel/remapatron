@@ -1,33 +1,18 @@
+$.ajax({
+	async: false,
+	url: 'js/config.js', 
+	dataType: 'script'
+}); // LOAD CONFIGURATION FILE
+
 var map;
-var ajaxRequest;
-var plotlist;
-var plotlayers=[];
-var geojsonLayer = new L.GeoJSON();
-var geojsonPointLayer = new L.GeoJSON();
-var get_url = "http://184.73.220.107/remappingservice/get/";
-var store_url = "http://184.73.220.107/remappingservice/store/";
-var count_url = "http://184.73.220.107/remappingservice/count/";
-var clickcnt;
-var m1, m2;
-var currentWayId;
+if (config.challenge.hasWay) var geojsonLayer = new L.GeoJSON();
+if (config.challenge.hasNode) var geojsonPointLayer = new L.GeoJSON();
 var bingLayer, osmLayer;
-var attrControl;
 var osmUrl='http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 var osmAttrib='Map data © OpenStreetMap contributors'
 var t; 
 var currentNodeId = 0;
 var currentWayId = 0;
-
-var DISABLEKEYBOARDHOOKS = false;
-
-var geojsonMarkerOptions = {
-    radius: 14,
-    fillColor: "#ff7800",
-    color: "#F00",
-    weight: 4,
-    opacity: 1,
-    fillOpacity: 0.0
-};
 
 function getExtent(geojson) {
 	var lats = [], lngs = [];
@@ -66,50 +51,89 @@ function dlgClose() {
     $('#dlgBox').fadeOut();
 }
 
-
+// Gets the next error and displays it on the map.
 function getItem() {
-    msg('Faites vos jeux...', 0)
+    msg(config.strings.msgNextChallenge, 0)
     $.getJSON(
-        get_url,
+        config.geojsonserviceurl,
         function(data) {
-			currentWayId = data.features[0].properties['id'];
-			currentNodeId = data.features[1].properties['id'];
-            var popuphtml = '<big><ul>Tags</ul></big><br />'
+			features = data.features;
+			var points = [];
+			var lines = [];
+			if (features == null || features.length == 0 || !features) {return false;}
+			for (f in features) {
+				feature = features[f];
+				if (features[f].geometry.type=="Point") {points.push(features[f])}
+				else if (features[f].geometry.type=="LineString") {lines.push(features[f])}
+			}
+			if (config.challenge.hasWay) currentWayId = lines[0].properties['id'];
+			if (config.challenge.hasNode) currentNodeId = points[0].properties['id'];
+			// FIXME The popups currently don't work
+			var popuphtml = '<big><ul>Tags</ul></big><br />'
             for (tag in data.features[0].properties.tags) {
-                popuphtml += tag + ': ' + data.features[0].properties.tags[tag] + '<br />';
+                popuphtml += tag + ': ' + lines[0].properties.tags[tag] + '<br />';
             };
-			geojsonLayer.addData(data.features[0]).bindPopup(popuphtml);//.openPopup();
-			geojsonPointLayer.addData(data.features[1]);
-            var extent = getExtent(data.features[0]);
-			map.fitBounds(extent);
-			var mqurl = 'http://open.mapquestapi.com/nominatim/v1/reverse?format=json&lat=' + map.getCenter().lat + ' &lon=' + map.getCenter().lng;
-			//msg(mqurl, 3);
-            msgClose()
-			$.getJSON(mqurl, 
-				function(data){
-					var locstr = 'We\'re in ';
-					locstr += data.address.county;
-					locstr += data.address.county.toLowerCase().indexOf('county') > -1?'':' County';
-					locstr += ', ' + data.address.state
-					msg(locstr , 3);
-				}
-			);
+			if (config.challenge.hasNode) {
+				geojsonPointLayer.addData(points[0]);
+			};
+			if (config.challenge.hasWay) {
+				geojsonLayer.addData(lines[0]).bindPopup(popuphtml);//.openPopup();
+	            var extent = getExtent(lines[0]);
+				map.fitBounds(extent);
+			};
+			revGeocode();
 			updateCounter();
         }
     );
 };
 
+function revGeocode() {
+	var mqurl = 'http://open.mapquestapi.com/nominatim/v1/reverse?format=json&lat=' + map.getCenter().lat + ' &lon=' + map.getCenter().lng;
+
+	//close any notifications that are still hanging out on the page.
+    msgClose()
+
+	// this next bit fires the RGC request and parses the result in a decent way, but it looks really ugly.
+	$.getJSON(mqurl, 
+		function(data){
+			var locstr = 'We\'re ';
+			locstr += 
+				data.address.county ? 
+				'in ' + data.address.county + 
+				data.address.county.toLowerCase().indexOf('county') > -1?
+				', ' :
+				' County, ' :
+				data.address.city ? 
+				'in ' + data.address.city + ', ' : 
+				data.address.town ? 
+				data.address.town + ', ' : 
+				data.address.hamlet ? 
+				data.address.hamlet + ', ' : 
+				'somewhere in ';
+			locstr += ', ' + data.address.state?data.address.state:data.address.country
+			
+			// display a message saying where we are in the world
+			msg(locstr , 3);
+		}
+	);
+};
+
 function initmap() {
+	// initialize Leaflet map and tile layer objects
     map = new L.Map('map');
     osmLayer = new L.TileLayer(osmUrl, {attribution: osmAttrib});
     map.setView(new L.LatLng(40.0, -90.0),17);
     map.addLayer(osmLayer);
-    map.addLayer(geojsonLayer);
-    map.addLayer(geojsonPointLayer);
+
+	// add the appropriate GeoJSON layers
+    if (config.challenge.hasWay) map.addLayer(geojsonLayer);
+    if (config.challenge.hasNode) map.addLayer(geojsonPointLayer);
+
+	// get the first error
     getItem();
-	
+		
 	// add keyboard hooks
-    if (!DISABLEKEYBOARDHOOKS) {
+    if (config.enablekeyboardhooks) {
         $(document).bind('keydown', function(e){
             switch (e.which) {
                 case 81: //q
@@ -127,6 +151,8 @@ function initmap() {
             }
         })
 	};
+	
+	// update the counters for the first time
 	updateCounter();
 };
 
@@ -140,21 +166,23 @@ function toggleLayers() {
 	}
 }
 
+// This function displays a message that we're moving on to the next error, stores the result of the confirmation dialog in the database, and triggers loading the next challenge.
 function nextUp(i) {
-	msg("OK, moving along...",1);
-	$.ajax(store_url + currentWayId + '/' + i, {'type':'PUT'}).done(function(){setTimeout("getItem()", 1000)});
+	msg(config.strings.msgMovingOnToNextChallenge,1);
+	$.ajax(config.storeresulturl + currentWayId + '/' + i, {'type':'PUT'}).done(function(){setTimeout("getItem()", 1000)});
 }
 
+// Opens the current highlighted OSM objects in JOSM or Potlatch.
 function openIn(editor) {
     if (map.getZoom() < 14){
-        msg("zoom in a little so we don't have to load a huge area from the API.", 3);
+        msg(config.strings.msgZoomInForEdit, 3);
         return false;
     };
     var bounds = map.getBounds();
     var sw = bounds.getSouthWest();
     var ne = bounds.getNorthEast();
 	if (editor == 'j') { // JOSM
-		var JOSMurl = "http://127.0.0.1:8111/load_and_zoom?left=" + sw.lng + "&right=" + ne.lng + "&top=" + ne.lat + "&bottom=" + sw.lat + "&new_layer=0&select=node" + currentNodeId + ",way" + currentWayId;
+		var JOSMurl = "http://127.0.0.1:8111/load_and_zoom?left=" + sw.lng + "&right=" + ne.lng + "&top=" + ne.lat + "&bottom=" + sw.lat + "&new_layer=0&select=node" + currentWayId + ",way" + currentWayId;
 		// Use the .ajax JQ method to load the JOSM link unobtrusively and alert when the JOSM plugin is not running.
 		$.ajax({
 			url: JOSMurl,
@@ -173,17 +201,21 @@ function openIn(editor) {
 	}
 }
 
+// This function shows the dialog asking the user for confirmation that he has fixed the bug in the editor.
 function confirmRemap(e) {
 	dlg("The area is being loaded in " + (e=='j'?'JOSM':'Potlatch') + " now. Come back here after you do your edits.<br /><br />Did you fix it?<p><div class=button onClick=nextUp(100);$('#dlgBox').fadeOut()>YES</div><div class=button onClick=nextUp(0);$('#dlgBox').fadeOut()>NO :(</div><div class=button onClick=nextUp(100);$('#dlgBox').fadeOut()>SOMEONE BEAT ME TO IT</div><div class=button onClick=nextUp(100);$('#dlgBox').fadeOut()>IT WAS NOT AN ERROR AFTER ALL</div>");
 }
 
+// This function shows the about window. 
+// FIXME the string should be in the config file.
 function showAbout() {
 	dlg("<strong>Help fix the main OpenStreetMap road network in the US, one way at a time!</strong><p>This website will highlight one unconnected way.<p>You have three options:<p>1. Flag the way as OK (we do make mistakes);<br />2. Skip this one and leave it for someone else to fix;<br />3. Open this area in JOSM or Potlatch to fix it. (You have to have JOSM running and the remote control function enabled in the preferences for the JOSM link to work).<p>When you're done, the next way appears. Repeat ad infinitum.<p><small>A thing by <a href='mailto:m@rtijn.org'>Martijn van Exel</a></small><p><div class='button' onClick=\"dlgClose()\">OK</div>",0);
 }
 
+// this function gets the latest counts for total remaining errors, amount fixed in last hr and amount fixed in last day and updates the page with the results.
 function updateCounter() {
 	$.getJSON(
-		count_url,
+		config.counturl,
 		function(data) {
 			$('#counter').text(data[0]);
 			$('#hrfix').text(data[1]);

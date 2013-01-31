@@ -1,11 +1,11 @@
 var config = {
-	geojsonserviceurl: 'http://localhost/mrsvc/get/',
-	storeresulturl: 'http://localhost/mrsvc/store/',
-	counturl: 'http://localhost/mrsvc/count/',
+	geojsonserviceurl: 'http://192.168.6.128/mrsvc/get/',
+	storeresulturl: 'http://192.168.6.128/mrsvc/store/',
+	counturl: 'http://192.168.6.128/mrsvc/count/',
 	enablekeyboardhooks: true,
 	challenge: {
 		hasWay: true,
-		hasNode: false,
+		hasNode: true,
 	},
 	strings: {
 		msgNextChallenge: 'Faites vos jeux...',
