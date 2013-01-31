@@ -16,14 +16,24 @@ It runs as a WSGI script under Apache, so you will also need to have [mod_wsgi](
 The supplied database example is tested on PostgreSQL 9.1 with PostGIS 2.0.
   
 ##Installation##
+_These instructions assume a Ubuntu 12 system, you may need to adapt for a different distro._
+
 First, check out the repo to a local `maproulette` directory. The instructions and the config file templates assume that this directory lives in your home directory.
 
-`git clone https://github.com/mvexel/remapatron maproulette`
+```
+git clone https://github.com/mvexel/remapatron maproulette
+cd maproulette
+```
 
 ###1. Web front end###
-The web front end can live anywhere as long as the directory and the files in it are readable by your web server. If you are using Apache 2.x, there is a config file you can use in the `extras/apache-config` directory. You will need to adapt the path names to suit your local path and load this file as part of your Apache configuration. If you are on Ubuntu, you can create a symlink to this file in `/etc/apache/conf.d/`. 
+The web front end can live anywhere as long as the directory and the files in it are readable by your web server. If you are using Apache 2.x, there is a config file you can use in the `extras/apache-config` directory. You will need to adapt the path names to suit your local path and load this file as part of your Apache configuration. You can create a symlink to this file in `/etc/apache/conf.d/`. After this, restart apache.
 
-Next, you will want to open `client/js/config.js` and check the paths to the service hooks:
+```
+sudo ln -s /home/mvexel/maproulette/extra/apache-config/maproulette.conf /etc/apache2/conf.d
+sudo service apache2 restart
+```
+
+Next, open `client/js/config.js` and check the URLs for the service hooks:
  
 ```
         geojsonserviceurl: 'http://localhost/mrsvc/get/',
@@ -35,23 +45,72 @@ If you are using the provided example web service (see below), these paths are g
 
 ###2. Services ###
 
-You have two options: either you use the supplied example web service and database schema, or you create your own backend. 
+You have two options: either you use the supplied example web service and database schema, or you create your own backend. _Note that the example database relies on some poorly documented views and functions, so this setup is not likely to be very useful for a production environment where you want to load your own challenges._
+
 
 If you want to use your own backend, you will need to supply a web service with three endpoints, as described below under `get *Craft Your Own*. 
 
 If you want to use the supplied service, you will need to make sure your Python environment has all the required modules, see above. Then, read on under *Use The Example*.  
 
-####Use The Example####
-The apache configuration file mentioned before takes care 
+####Option 1: Use The Example####
 
-####Craft Your Own####
- 
+To use the example backend including a small number of example connectivity issues, follow these steps:
 
-###3. Database ###
-If you want to use the example database, you will need PostrgreSQL 9.1+ and PostGIS 2.0+ installed. 
+__Step 1__ Prepare your PostgreSQL environment
 
-Everything needed to create the demo database (except for data) is in `database/database.sql` which you can just load using psql. There are two prerequisites:
+You will need to have PostrgreSQL 9.0+ installed and running. Also make sure that...
 
-1. A database named `maproulette` must not already exist.
-1. A PostgreSQL superuser `osm` must exist (`createuser -s osm`)
+1. A database named `maproulette` does not already exist.
+1. A PostgreSQL superuser `osm` exists (`createuser -s osm`)
+
+
+
+__Step 2__ Create the example database on your PostgreSQL instance and load the demonstration data:
+
+```
+psql -f database/database.sql
+psql -d osm -f  demodata.sql
+```
+This assumes that psql connects to the local PostgreSQL instance as a superuser by default. Adjust if necessary.
+
+__Step 2__ Configure the web service
+
+Open `service/get.py` and look for these lines near the top:
+
+```
+db = {
+  'host': 'localhost', 
+  'dbname': 'maproulette', 
+  'user': 'osm', 
+  'password': 'osm'
+}
+```
+
+Change these to match your database connection if necessary.
+
+__Step 3__ Test
+
+Point your browser to `http://localhost/mrsvc/get/`. Replace `localhost` with the path to your MapRoulette install. You should get a GeoJSON response containing one LineString and one Point geometry, like this:
+
+```
+{"type": "FeatureCollection", "features": [{"geometry": {"type": "LineString", "coordinates": [[-101.5193522, 50.0795685], [-101.5196494, 50.0792779]]}, "type": "Feature", "properties": {"id": 190387057}, "id": null}, {"geometry": {"type": "Point", "coordinates": [-101.5193522, 50.0795685]}, "type": "Feature", "properties": {"id": 2010227030}, "id": null}]}
+```
+
+Never mind the `null` values in there, this is OK. 
+
+You can test the `/count` endpoint in a similar fashion by pointing your browser to `http://localhost/mrsvc/count`, this should yield a Javascript array not unlike this one:
+
+```
+[67, 0, 0]
+``` 
+
+The first number is the total number of errors remaining, the second is the number fixed in the last day, and the third represents the number of fixes in the last hour.
+
+If this is all peachy, you can test your fresh MapRoulette installation by going to `http://localhost/maproulette/`.
+
+Good luck and don't hesitate to ask if something is not working!
+
+####Option 2: Craft Your Own####
+
+___To be continued...___
 
