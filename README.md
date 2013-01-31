@@ -1,8 +1,18 @@
 #MapRoulette#
-MapRoulette is an extremely addictive OpenStreetMap bug fixing tool.   
+MapRoulette is an extremely addictive OpenStreetMap bug fixing tool. It runs at <http://maproulette.org/>. If you are a MapRoulette user and have ideas for future challenges, improvements or a bug report, please file them right here under [issues](https://github.com/mvexel/remapatron/issues).
+
+If you want to install your own instance of MapRoulette, read on.
+
+##Introduction##
+
+MapRoulette consists of a web front end or client, and a backend consisting of a database to store the OSM bugs you want to expose as well as usage metrics. Between the database and the web front end sits a simple web service layer.
+
+![MapRoulette High Level Architecture](https://www.dropbox.com/s/4ngbfjcn5yeg2sg/MapRouletteArchitecture.png?dl=1 "Maproulette High Level Architecture")
+
+This repository provides the client as well as a (bad) example of the service and database layers. Bad, because the web service uses direct database calls that rely on a poorly documented database schema. But if you just want to see how it works, it's a start.
 
 ##Dependencies##
-The web front end is self-contained, some resources are loaded from the web.
+The web front end is self-contained, some resources ([jQuery](http://jquery.org/), [Leaflet](http://leafletjs.com)) are loaded from the web.
 
 The supplied service example is written in Python and tested only on Python 2.7. It depends on:
 
@@ -47,12 +57,11 @@ If you are using the provided example web service (see below), these paths are g
 
 You have two options: either you use the supplied example web service and database schema, or you create your own backend. _Note that the example database relies on some poorly documented views and functions, so this setup is not likely to be very useful for a production environment where you want to load your own challenges._
 
+If you want to use your own backend, you will need to supply a web service connecting to your own database that has three endpoints, as described in the next chapter: *Craft Your Own*. 
 
-If you want to use your own backend, you will need to supply a web service with three endpoints, as described below under `get *Craft Your Own*. 
+If you want to use the supplied service, you will need to make sure your Python environment has all the required modules, see above. Then, continue below.
 
-If you want to use the supplied service, you will need to make sure your Python environment has all the required modules, see above. Then, read on under *Use The Example*.  
-
-####Option 1: Use The Example####
+####Setting up the example database and services####
 
 To use the example backend including a small number of example connectivity issues, follow these steps:
 
@@ -63,8 +72,6 @@ You will need to have PostrgreSQL 9.0+ installed and running. Also make sure tha
 1. A database named `maproulette` does not already exist.
 1. A PostgreSQL superuser `osm` exists (`createuser -s osm`)
 
-
-
 __Step 2__ Create the example database on your PostgreSQL instance and load the demonstration data:
 
 ```
@@ -73,7 +80,7 @@ psql -d osm -f  demodata.sql
 ```
 This assumes that psql connects to the local PostgreSQL instance as a superuser by default. Adjust if necessary.
 
-__Step 2__ Configure the web service
+__Step 3__ Configure the web service
 
 Open `service/get.py` and look for these lines near the top:
 
@@ -88,7 +95,7 @@ db = {
 
 Change these to match your database connection if necessary.
 
-__Step 3__ Test
+__Step 4__ Test
 
 Point your browser to `http://localhost/mrsvc/get/`. Replace `localhost` with the path to your MapRoulette install. You should get a GeoJSON response containing one LineString and one Point geometry, like this:
 
@@ -110,7 +117,6 @@ If this is all peachy, you can test your fresh MapRoulette installation by going
 
 Good luck and don't hesitate to ask if something is not working!
 
-####Option 2: Craft Your Own####
-
-___To be continued...___
+##Craft Your Own##
+So you want to set up your very own MapRoulette back end?
 
