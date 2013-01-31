@@ -7,6 +7,14 @@ var config = {
 		hasWay: true,
 		hasNode: true,
 	},
+	fixflag: {
+		fixed: 100,
+		notfixed: 0,
+		someonebeatme: 100,
+		noerrorafterall: 100,
+		falsepositive: 1,
+		skip: -1   
+	},
 	strings: {
 		msgNextChallenge: 'Faites vos jeux...',
 		msgMovingOnToNextChallenge: 'OK, moving right along...',

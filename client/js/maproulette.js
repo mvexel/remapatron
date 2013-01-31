@@ -137,10 +137,10 @@ function initmap() {
         $(document).bind('keydown', function(e){
             switch (e.which) {
                 case 81: //q
-                    nextUp(1);
+                    nextUp(config.fixflag.falsepositive);
                     break;
                 case 87: //w
-                    nextUp(-1);
+                    nextUp(config.fixflag.skip);
                     break;
                 case 69: //e
                     openIn('j');
@@ -203,7 +203,7 @@ function openIn(editor) {
 
 // This function shows the dialog asking the user for confirmation that he has fixed the bug in the editor.
 function confirmRemap(e) {
-	dlg("The area is being loaded in " + (e=='j'?'JOSM':'Potlatch') + " now. Come back here after you do your edits.<br /><br />Did you fix it?<p><div class=button onClick=nextUp(100);$('#dlgBox').fadeOut()>YES</div><div class=button onClick=nextUp(0);$('#dlgBox').fadeOut()>NO :(</div><div class=button onClick=nextUp(100);$('#dlgBox').fadeOut()>SOMEONE BEAT ME TO IT</div><div class=button onClick=nextUp(100);$('#dlgBox').fadeOut()>IT WAS NOT AN ERROR AFTER ALL</div>");
+	dlg("The area is being loaded in " + (e=='j'?'JOSM':'Potlatch') + " now. Come back here after you do your edits.<br /><br />Did you fix it?<p><div class=button onClick=nextUp(" + config.fixflag.fixed + ");$('#dlgBox').fadeOut()>YES</div><div class=button onClick=nextUp(" + config.fixflag.notfixed + ");$('#dlgBox').fadeOut()>NO :(</div><div class=button onClick=nextUp(" + config.fixflag.someonebeatme + ");$('#dlgBox').fadeOut()>SOMEONE BEAT ME TO IT</div><div class=button onClick=nextUp(" + config.fixflag.noerrorafterall + ");$('#dlgBox').fadeOut()>IT WAS NOT AN ERROR AFTER ALL</div>");
 }
 
 // This function shows the about window. 
