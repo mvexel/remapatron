@@ -118,5 +118,69 @@ If this is all peachy, you can test your fresh MapRoulette installation by going
 Good luck and don't hesitate to ask if something is not working!
 
 ##Craft Your Own##
-So you want to set up your very own MapRoulette back end?
+So you want to set up your very own MapRoulette back end? Great - if you come up with something reusable and scalable, please consider submitting it to this repository. So whatever you do next, we encourage you to create your own fork of MapRoulette first.
 
+You will need to design and implement a _database_ and the _service layer_. The database can be anything really, as long as your service layer can talk to it. A spatial database is probably most convenient, as you will be storing points and perhaps also linestrings, and in the future MapRoulette may support finding errors nearby so users can focus on specific regions. PostgreSQL + PostGIS is an obvious choice.
+
+###Database###
+
+The database needs to store two things: the bugs and the user activity. 
+
+####Bugs####
+MapRoulette support two types of bugs at this time. The simplest bug type is represented by a single point, corresponding to the affected OSM node. The bug table should contain at least the point geometry (or lon / lat in separate columns) and the OSM ID. You may also want to store the OSM tags, MapRoulette will support [popups](http://leafletjs.com/reference.html#popup) soon that would display any attributes attached to the bug.
+
+The other type of bug currently supported has two geometries: one linestring and one point. This is useful for bugs that affect a particular node along a way. In that case, both geometries (point and line) as well as both OSM IDs need to be in the table.
+
+This table needs to be updated regularly from the main OSM database, otherwise errors that have long been fixed will keep showing up. In the main MapRoulette instance, the table is updated every four hours.
+
+####User Activity####
+MapRoulette stores the various types of user activity for two reasons. The first is metrics: MapRoulette displays counts in its own interface, and longer term metrics may be derived from the database. The second is to flag errors as fixed between table updates. This feedback is stored as a fix flag, which is an integer value. The value increments as an error is more likely to no longer exist. There are six user activity that affect the fix flag, as set in `client/js/config.js`:
+
+```
+  fixflag: {
+		fixed: 100,
+		notfixed: 0,
+		someonebeatme: 100,
+		noerrorafterall: 100,
+		falsepositive: 1,
+		skip: -1   
+	}
+```
+
+The idea is that you would select the next bug for the user to fix out of the current table with the condition that the fix flag is smaller than a certain threshold. In the main MapRoulette instance, this threshold is 3. _This is an underdeveloped concept in MapRoulette, we would love to see ideas for how to improve on it._
+
+###Service Endpoints###
+
+The MapRoulette client accesses the database through three service endpoints as described below.
+
+####/get####
+`HTTP HEAD`
+`No parameters`
+
+This parameterless endpoint gets the next bug. It returns the object as GeoJSON in the following form:
+
+```
+{"type": "FeatureCollection", "features": [{"geometry": {"type": "LineString", "coordinates": [[-101.5193522, 50.0795685], [-101.5196494, 50.0792779]]}, "type": "Feature", "properties": {"id": 190387057}, "id": null}, {"geometry": {"type": "Point", "coordinates": [-101.5193522, 50.0795685]}, "type": "Feature", "properties": {"id": 2010227030}, "id": null}]}
+```
+
+This example assumes a challenge that incorporates a linestring and a point. For point-only challenges, you would return a FeatureCollection with only one single Point geometry. 
+
+It is up to you how you determine what the 'next' challenge is. You may pick a random record from the database, but `ORDER BY RANDOM()` in PostgreSQL is notoriously slow with larger tables as it needs to perform a sequential scan of the table. You will need to make sure that no two parallel users are presented with the same bug to fix, as this may lead to editing conflicts in the OSM database and general confusion.
+
+####/count#####
+`HTTP HEAD`
+`No parameters`
+
+This endpoint gets the counts to update the client UI and returns a JS Array of the following form:
+
+`[total_remaining, fixed_last24h, fixed_lasthour]`
+
+####/store####
+`HTTP PUT`
+`Parameters: OSM ID, fix flag increment`
+
+This endpoint stores the user activity when any of the six user activity types occur in the client. It takes the OSM ID of the current bug in the client as well as the increment (which could be negative) in the fix flag. This should trigger a database insert or update.
+
+Example:
+
+`http://localhost/mrsvc/store/168894038/1` 
