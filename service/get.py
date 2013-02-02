@@ -11,7 +11,9 @@ db = {
   'password': 'osm'
 }
 
-connstr = "host=%s dbname=%s user=%s password=%s" % (db['host'], db['dbname'], db['user'], db['password'])
+connstr = "host=%s dbname=%s user=%s password=%s" % (
+    db['host'], db['dbname'], db['user'], db['password'])
+
 urls = (
     '/count/', 'getcount',
     '/store/(.*)/(-*\d+)', 'storeresult',
@@ -28,8 +30,10 @@ class getcandidate:
     def GET(self,osmid):
         conn = psycopg2.connect(connstr)
         cur = conn.cursor()
-        if osmid:                                                                                                                                                                                                                         
-            cur.execute("SELECT ST_AsGeoJSON(geom_way), osmid_way, ST_AsGeoJSON(geom), osmid FROM mr_currentchallenge WHERE osmid_way = %s", (osmid,))
+        if osmid:                                                            
+            cur.execute("SELECT ST_AsGeoJSON(geom_way), osmid_way, ST_AsGeoJSON(geom), osmid FROM mr_currentchallenge WHERE osmid_way = %(osmid)s",
+                        {'osmid': osmid})
+            
         else:
             cur.execute("SELECT ST_AsGeoJSON(geom_way), osmid_way, ST_AsGeoJSON(geom), osmid FROM mr_currentchallenge WHERE fixflag < 3 ORDER BY RANDOM() LIMIT 1")
         recs = cur.fetchall()
@@ -47,7 +51,7 @@ class storeresult:
             return web.badrequest();
         try:
 #FIXME hardcoded challenge ID
-            cur.execute("SELECT mr_upsert(%s::integer,%s::bigint,1::integer)", (amt,osmid))
+            cur.execute("SELECT mr_upsert(%(amt)s::integer,%(osmid)s::bigint,1::integer)", {'amt': amt, 'osmid': osmid})
             conn.commit()
         except Exception, e:
             print e
