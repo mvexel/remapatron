@@ -190,20 +190,25 @@ function openIn(editor) {
 				if (t.status!=200) {
 					msg("JOSM remote control did not respond ("+t.status+"). Do you have JOSM running?", 2);
 				} else {
-					setTimeout("confirmRemap('j')", 4000);
+					setTimeout("confirmRemap('JOSM')", 4000);
 				}
 			}
 		});
 	} else if (editor == 'p') { // potlatch
 		var PotlatchURL = 'http://www.openstreetmap.org/edit?editor=potlatch2&bbox=' + map.getBounds().toBBoxString();
 		window.open(PotlatchURL);
-		setTimeout("confirmRemap('p')", 4000)
-	}
+		setTimeout("confirmRemap('Potlatch')", 4000)
+	} else if (editor == 'i') { // iD editor
+        var id = currentNodeId ? 'n' + currentNodeId : 'w' + currentWayId,
+            loc = map.getZoom() + '/' + map.getCenter().lat + '/' + map.getCenter().lng;
+        window.open('http://geowiki.com/iD/#id=' + id + '&map=' + loc);
+		setTimeout("confirmRemap('iD')", 4000);
+    }
 }
 
 // This function shows the dialog asking the user for confirmation that he has fixed the bug in the editor.
 function confirmRemap(e) {
-	dlg("The area is being loaded in " + (e=='j'?'JOSM':'Potlatch') + " now. Come back here after you do your edits.<br /><br />Did you fix it?<p><div class=button onClick=nextUp(" + config.fixflag.fixed + ");$('#dlgBox').fadeOut()>YES</div><div class=button onClick=nextUp(" + config.fixflag.notfixed + ");$('#dlgBox').fadeOut()>NO :(</div><div class=button onClick=nextUp(" + config.fixflag.someonebeatme + ");$('#dlgBox').fadeOut()>SOMEONE BEAT ME TO IT</div><div class=button onClick=nextUp(" + config.fixflag.noerrorafterall + ");$('#dlgBox').fadeOut()>IT WAS NOT AN ERROR AFTER ALL</div>");
+	dlg("The area is being loaded in " + e + " now. Come back here after you do your edits.<br /><br />Did you fix it?<p><div class=button onClick=nextUp(" + config.fixflag.fixed + ");$('#dlgBox').fadeOut()>YES</div><div class=button onClick=nextUp(" + config.fixflag.notfixed + ");$('#dlgBox').fadeOut()>NO :(</div><div class=button onClick=nextUp(" + config.fixflag.someonebeatme + ");$('#dlgBox').fadeOut()>SOMEONE BEAT ME TO IT</div><div class=button onClick=nextUp(" + config.fixflag.noerrorafterall + ");$('#dlgBox').fadeOut()>IT WAS NOT AN ERROR AFTER ALL</div>");
 }
 
 // This function shows the about window. 
