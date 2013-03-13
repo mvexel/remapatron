@@ -1,3 +1,5 @@
+**Note that MapRoulette is being rebuilt from the ground up. If you want to contribute, please head over to https://github.com/emacsen/maproulette-front and follow us there.**
+
 #MapRoulette#
 MapRoulette is an extremely addictive OpenStreetMap bug fixing tool. It runs at <http://maproulette.org/>. If you are a MapRoulette user and have ideas for future challenges, improvements or a bug report, please file them right here under [issues](https://github.com/mvexel/remapatron/issues).
 
