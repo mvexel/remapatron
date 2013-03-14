@@ -3,10 +3,9 @@ var ajaxRequest;
 var plotlist;
 var plotlayers=[];
 var geojsonLayer = new L.GeoJSON();
-var geojsonPointLayer = new L.GeoJSON();
-var get_url = "http://184.73.220.107/remappingservice/get/";
-var store_url = "http://184.73.220.107/remappingservice/store/";
-var count_url = "http://184.73.220.107/remappingservice/count/";
+var get_url = "/mrsvc/get/";
+var store_url = "/mrsvc/store/";
+var count_url = "/mrsvc/count/";
 var clickcnt;
 var m1, m2;
 var currentWayId;
@@ -15,7 +14,6 @@ var attrControl;
 var osmUrl='http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 var osmAttrib='Map data © OpenStreetMap contributors'
 var t; 
-var currentNodeId = 0;
 var currentWayId = 0;
 
 var DISABLEKEYBOARDHOOKS = false;
@@ -68,20 +66,17 @@ function dlgClose() {
 
 
 function getItem() {
-    msg('Faites vos jeux...', 0)
+    msg('Faites vos jeux...', 0);
+    map.removeLayer(geojsonLayer);
+    geojsonLayer = new L.GeoJSON();
+    map.addLayer(geojsonLayer);
     $.getJSON(
         get_url,
         function(data) {
 			currentWayId = data.features[0].properties['id'];
-			currentNodeId = data.features[1].properties['id'];
-            var popuphtml = '<big><ul>Tags</ul></big><br />'
-            for (tag in data.features[0].properties.tags) {
-                popuphtml += tag + ': ' + data.features[0].properties.tags[tag] + '<br />';
-            };
-			geojsonLayer.addData(data.features[0]).bindPopup(popuphtml);//.openPopup();
-			geojsonPointLayer.addData(data.features[1]);
             var extent = getExtent(data.features[0]);
-			map.fitBounds(extent);
+            geojsonLayer.addData(data.features[0]);$                                                                                      
+            map.fitBounds(extent);
 			var mqurl = 'http://open.mapquestapi.com/nominatim/v1/reverse?format=json&lat=' + map.getCenter().lat + ' &lon=' + map.getCenter().lng;
 			//msg(mqurl, 3);
             msgClose()
@@ -105,7 +100,6 @@ function initmap() {
     map.setView(new L.LatLng(40.0, -90.0),17);
     map.addLayer(osmLayer);
     map.addLayer(geojsonLayer);
-    map.addLayer(geojsonPointLayer);
     getItem();
     $.cookie('activelayer', 'osmLayer');
 	
@@ -117,7 +111,7 @@ function initmap() {
                     nextUp(1);
                     break;
                 case 87: //w
-                    nextUp(-1);
+                    nextUp(0);
                     break;
                 case 69: //e
                     openIn('j');
@@ -150,15 +144,16 @@ function nextUp(i) {
 }
 
 function openIn(editor) {
-    if (map.getZoom() < 14){
-        msg("zoom in a little so we don't have to load a huge area from the API.", 3);
-        return false;
-    };
+    //if (map.getZoom() < 14){
+    //    msg("zoom in a little so we don't have to load a huge area from the API.", 3);
+    //    return false;
+    //};
     var bounds = map.getBounds();
     var sw = bounds.getSouthWest();
     var ne = bounds.getNorthEast();
 	if (editor == 'j') { // JOSM
-		var JOSMurl = "http://127.0.0.1:8111/load_and_zoom?left=" + sw.lng + "&right=" + ne.lng + "&top=" + ne.lat + "&bottom=" + sw.lat + "&new_layer=0&select=node" + currentNodeId + ",way" + currentWayId;
+		//var JOSMurl = "http://127.0.0.1:8111/load_and_zoom?left=" + sw.lng + "&right=" + ne.lng + "&top=" + ne.lat + "&bottom=" + sw.lat + "&new_layer=0&select=node" + currentNodeId + ",way" + currentWayId;
+		var JOSMurl = "http://127.0.0.1:8111/load_object?new_layer=true&objects=w" + currentWayId;
 		// Use the .ajax JQ method to load the JOSM link unobtrusively and alert when the JOSM plugin is not running.
 		$.ajax({
 			url: JOSMurl,
@@ -171,26 +166,27 @@ function openIn(editor) {
 			}
 		});
 	} else if (editor == 'p') { // potlatch
-		var PotlatchURL = 'http://www.openstreetmap.org/edit?editor=potlatch2&bbox=' + map.getBounds().toBBoxString();
-		window.open(PotlatchURL);
-		setTimeout("confirmRemap('p')", 4000)
+		//var PotlatchURL = 'http://www.openstreetmap.org/edit?editor=potlatch2&bbox=' + map.getBounds().toBBoxString();
+		//window.open(PotlatchURL);
+        msg("Potlatch does not support loading a single object so it is not well suited for this challenge, which sometimes involves editing very long way segments.",5)
+		//setTimeout("confirmRemap('p')", 4000)
 	}
 }
 
 function confirmRemap(e) {
-	dlg("The area is being loaded in " + (e=='j'?'JOSM':'Potlatch') + " now. Come back here after you do your edits.<br /><br />Did you fix it?<p><div class=button onClick=nextUp(100);$('#dlgBox').fadeOut()>YES</div><div class=button onClick=nextUp(0);$('#dlgBox').fadeOut()>NO :(</div><div class=button onClick=nextUp(100);$('#dlgBox').fadeOut()>SOMEONE BEAT ME TO IT</div><div class=button onClick=nextUp(100);$('#dlgBox').fadeOut()>IT WAS NOT AN ERROR AFTER ALL</div>");
+	dlg("The area is being loaded in " + (e=='j'?'JOSM':'Potlatch') + " now. Come back here after you do your edits.<br /><br />Did you fix it?<p><div class=button onClick=nextUp(1);$('#dlgBox').fadeOut()>YES</div><div class=button onClick=nextUp(0);$('#dlgBox').fadeOut()>NO :(</div><div class=button onClick=nextUp(1);$('#dlgBox').fadeOut()>SOMEONE BEAT ME TO IT</div><div class=button onClick=nextUp(1);$('#dlgBox').fadeOut()>IT WAS NOT AN ERROR AFTER ALL</div>");
 }
 
 function showAbout() {
-	dlg("<strong>Help fix the main OpenStreetMap road network in the US, one way at a time!</strong><p>This website will highlight one unconnected way.<p>You have three options:<p>1. Flag the way as OK (we do make mistakes);<br />2. Skip this one and leave it for someone else to fix;<br />3. Open this area in JOSM or Potlatch to fix it. (You have to have JOSM running and the remote control function enabled in the preferences for the JOSM link to work).<p>When you're done, the next way appears. Repeat ad infinitum.<p><small>A thing by <a href='mailto:m@rtijn.org'>Martijn van Exel</a></small><p><div class='button' onClick=\"dlgClose()\">OK</div>",0);
+	dlg("<strong>Help fix the main OpenStreetMap road network in the US, one way at a time!</strong><p>This website will highlight one way with no lanes=*.<p>You have three options:<p>1. Flag the way as OK (we do make mistakes);<br />2. Skip this one and leave it for someone else to fix;<br />3. Open this way in JOSM or Potlatch to fix it. (You have to have JOSM running and the remote control function enabled in the preferences for the JOSM link to work).<p>When you're done, the next way appears. Repeat ad infinitum.<p><small>A thing by <a href='mailto:m@rtijn.org'>Martijn van Exel</a></small><p><div class='button' onClick=\"dlgClose()\">OK</div>",0);
 }
 
 function updateCounter() {
 	$.getJSON(
 		count_url,
 		function(data) {
-			$('#counter').text(data[0]);
-			$('#hrfix').text(data[1]);
-			$('#dayfix').text(data[2]);
+			//$('#counter').text(data[0]);
+			$('#hrfix').text(data[0]);
+			$('#dayfix').text(data[1]);
 		});	
 }

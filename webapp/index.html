@@ -4,11 +4,11 @@
     <meta charset="utf-8" />
     <title>OpenStreetMap MapRoulette</title>
     <link rel="stylesheet" type="text/css" href="css/style.css" />
-    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.4.5/leaflet.css" />
+    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.5.1/leaflet.css" />
     <!--[if lte IE 8]>
         <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.4.5/leaflet.ie.css" />
     <![endif]-->
-    <script src="http://cdn.leafletjs.com/leaflet-0.4.5/leaflet.js"></script>
+    <script src="http://cdn.leafletjs.com/leaflet-0.5.1/leaflet.js"></script>
     <script type="text/javascript" src="jquery/jquery-1.7.1.min.js"></script>
     <script type="text/javascript" src="js/jquery.cookie.js"></script>
     <script type="text/javascript" src="js/stuff.js"></script>
@@ -19,10 +19,10 @@
     <div id="dlgBox"></div>
     <div class="banner">   
         <strong>OPENSTREETMAP US<br /><em>MAPROULETTE</em></strong> 
-        <div style="font-size:10px">CURRENT CHALLENGE: <a href="https://oegeo.wordpress.com/2012/10/29/new-maproulette-challenge-connectivity-bugs/" target=_blank>CONNECTIVITY</a> (<a href="http://vimeo.com/53269197">VIDEO</a>)</div> 
+        <div style="font-size:10px">CURRENT CHALLENGE: ADD LANE COUNTS</div> 
         <div class=button id=about onClick="showAbout()">about / help</div> 
-		<div style="font-size:10px">we're down to <span style='font-weight:bold' id='counter'></span> connectivity errors. Thanks!</div>
-        <div style="font-size:10px">fixed in the last hour: <span style='font-weight:bold' id='hrfix'></span> / day: <span style='font-weight:bold' id='dayfix'></span>
+		<div style="font-size:10px;text-decoration: line-through;">we're down to <span style='font-weight:bold' id='counter'></span> ways w/o lane counts. Thanks!</div>
+        <div style="font-size:10px">Total count tempararily unavailable. Fixed in the last hour: <span style='font-weight:bold' id='hrfix'></span> / day: <span style='font-weight:bold' id='dayfix'></span>
 		<!--<div style="font-size:10px;font-weight:bold;color:red">LEVEL 2: unclassified, road, residential ways.</div>-->
         <div class="button" style="background-color:#3c3" onClick=nextUp(1)>THIS IS NOT AN ERROR :/<span class=key>q</span></div>
         <div class="button" style="background-color:#aaa" onClick=nextUp(-1)>I'M NOT SURE / SKIP <span class=key>w</span></div>
