@@ -185,8 +185,10 @@ function updateCounter() {
 	$.getJSON(
 		count_url,
 		function(data) {
-			//$('#counter').text(data[0]);
-			$('#hrfix').text(data[0]);
-			$('#dayfix').text(data[1]);
+			$('#counter').text(data[0]);
+			$('#hrfix').text(data[1]);
+			$('#dayfix').text(data[2]);
+            $('#hrtouch').text(data[3]);
+            $('#daytouch').text(data[4]);
 		});	
 }
