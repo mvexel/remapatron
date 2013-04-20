@@ -9,23 +9,6 @@ SET check_function_bodies = false;
 SET client_min_messages = warning;
 
 --
--- Name: osm; Type: DATABASE; Schema: -; Owner: osm
---
-
-CREATE DATABASE osm WITH TEMPLATE = template0 ENCODING = 'UTF8' LC_COLLATE = 'en_US.UTF-8' LC_CTYPE = 'en_US.UTF-8';
-
-
-ALTER DATABASE osm OWNER TO osm;
-
-\connect osm
-
-SET statement_timeout = 0;
-SET client_encoding = 'UTF8';
-SET standard_conforming_strings = on;
-SET check_function_bodies = false;
-SET client_min_messages = warning;
-
---
 -- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
 --
 
@@ -51,6 +34,20 @@ CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA public;
 --
 
 COMMENT ON EXTENSION hstore IS 'data type for storing sets of (key, value) pairs';
+
+
+--
+-- Name: uuid-ossp; Type: EXTENSION; Schema: -; Owner: 
+--
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION "uuid-ossp"; Type: COMMENT; Schema: -; Owner: 
+--
+
+COMMENT ON EXTENSION "uuid-ossp" IS 'generate universally unique identifiers (UUIDs)';
 
 
 SET search_path = public, pg_catalog;
@@ -2787,6 +2784,33 @@ $$;
 ALTER FUNCTION public.mr_setlocked(in_t timestamp without time zone, in_osmid bigint) OWNER TO osm;
 
 --
+-- Name: mr_upsert(character, bigint); Type: FUNCTION; Schema: public; Owner: osm
+--
+
+CREATE FUNCTION mr_upsert(in_fixflag character, in_osmid bigint) RETURNS void
+    LANGUAGE plpgsql
+    AS $$ 
+DECLARE 
+BEGIN 
+    CASE in_fixflag
+        WHEN '0','1' THEN
+            UPDATE tnav_ways_no_lanes_mrstatus SET done  = in_fixflag::boolean, donetime = now() WHERE osmid = in_osmid; 
+            IF NOT FOUND THEN 
+                INSERT INTO tnav_ways_no_lanes_mrstatus values (in_osmid, in_fixflag, now()); 
+            END IF;
+        ELSE
+            UPDATE tnav_ways_no_lanes_mrstatus SET done  = false, donetime = now(), skipflag = skipflag + 1 WHERE osmid = in_osmid; 
+            IF NOT FOUND THEN 
+                INSERT INTO tnav_ways_no_lanes_mrstatus values (in_osmid, false, now(), 1); 
+            END IF; END CASE;
+
+END; 
+$$;
+
+
+ALTER FUNCTION public.mr_upsert(in_fixflag character, in_osmid bigint) OWNER TO osm;
+
+--
 -- Name: mr_upsert(integer, bigint); Type: FUNCTION; Schema: public; Owner: osm
 --
 
@@ -2795,10 +2819,18 @@ CREATE FUNCTION mr_upsert(in_fixflag integer, in_osmid bigint) RETURNS void
     AS $$ 
 DECLARE 
 BEGIN 
-    UPDATE maproulette SET fixflag = in_fixflag WHERE osmid = in_osmid; 
-    IF NOT FOUND THEN 
-    INSERT INTO maproulette values (in_osmid, in_fixflag); 
-    END IF; 
+    CASE in_fixflag
+        WHEN 0,1 THEN
+            UPDATE tnav_ways_no_lanes_mrstatus SET done  = in_fixflag::boolean, donetime = now(), skipflag = skipflag + 1 WHERE osmid = in_osmid; 
+            IF NOT FOUND THEN 
+                INSERT INTO tnav_ways_no_lanes_mrstatus values (in_osmid, in_fixflag::boolean, now()); 
+            END IF;
+        ELSE
+            UPDATE tnav_ways_no_lanes_mrstatus SET done  = false, donetime = now(), skipflag = skipflag + 1 WHERE osmid = in_osmid; 
+            IF NOT FOUND THEN 
+                INSERT INTO tnav_ways_no_lanes_mrstatus values (in_osmid, false, now(), 1); 
+            END IF; END CASE;
+
 END; 
 $$;
 
@@ -8717,7 +8749,8 @@ ALTER TABLE public.mr_currentchallenge OWNER TO osm;
 CREATE TABLE tnav_ways_no_lanes (
     id bigint,
     type character varying(64),
-    linestring geometry
+    linestring geometry,
+    random uuid DEFAULT uuid_generate_v4()
 );
 
 
@@ -8746,6 +8779,30 @@ CREATE VIEW mr_nolanechallenge AS
 
 
 ALTER TABLE public.mr_nolanechallenge OWNER TO osm;
+
+--
+-- Name: tnav_ways_no_lanes_mrstatus; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
+--
+
+CREATE TABLE tnav_ways_no_lanes_mrstatus (
+    osmid bigint,
+    done boolean,
+    donetime timestamp without time zone,
+    skipflag smallint
+);
+
+
+ALTER TABLE public.tnav_ways_no_lanes_mrstatus OWNER TO osm;
+
+--
+-- Name: mr_ways_no_lanes_challenge; Type: VIEW; Schema: public; Owner: osm
+--
+
+CREATE VIEW mr_ways_no_lanes_challenge AS
+    SELECT a.id, a.type, a.linestring, COALESCE(b.done, false) AS done, COALESCE((b.donetime)::timestamp with time zone, (now() - '1 year'::interval)) AS donetime, COALESCE((b.skipflag)::integer, 0) AS skipflag, a.random FROM (tnav_ways_no_lanes a LEFT JOIN tnav_ways_no_lanes_mrstatus b ON ((a.id = b.osmid)));
+
+
+ALTER TABLE public.mr_ways_no_lanes_challenge OWNER TO osm;
 
 --
 -- Name: remapathonresults; Type: TABLE; Schema: public; Owner: osm; Tablespace: 
@@ -8795,7 +8852,8 @@ ALTER TABLE public.spatial_ref_sys OWNER TO osm;
 
 CREATE TABLE tnav_untagged_ways (
     wayid bigint,
-    linestring geometry
+    linestring geometry,
+    random uuid DEFAULT uuid_generate_v4()
 );
 
 
@@ -8818,6 +8876,13 @@ ALTER TABLE ONLY spatial_ref_sys
 
 
 --
+-- Name: idx_waysnolanes_id; Type: INDEX; Schema: public; Owner: postgres; Tablespace: 
+--
+
+CREATE INDEX idx_waysnolanes_id ON tnav_ways_no_lanes USING btree (id);
+
+
+--
 -- Name: tav_untagged_ways_geom_idx; Type: INDEX; Schema: public; Owner: postgres; Tablespace: 
 --
 
@@ -8836,6 +8901,13 @@ CREATE INDEX tnav_ways_no_lanes_geom_idx ON tnav_ways_no_lanes USING gist (lines
 --
 
 CREATE INDEX tnav_ways_no_lanes_type_idx ON tnav_ways_no_lanes USING btree (type);
+
+
+--
+-- Name: tnav_ways_no_lanes_uuid_idx; Type: INDEX; Schema: public; Owner: postgres; Tablespace: 
+--
+
+CREATE INDEX tnav_ways_no_lanes_uuid_idx ON tnav_ways_no_lanes USING btree (random);
 
 
 --
