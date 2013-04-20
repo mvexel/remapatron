@@ -174,7 +174,7 @@ function openIn(editor) {
 }
 
 function confirmRemap(e) {
-	dlg("The area is being loaded in " + (e=='j'?'JOSM':'Potlatch') + " now. Come back here after you do your edits.<br /><br />Did you fix it?<p><div class=button onClick=nextUp(1);$('#dlgBox').fadeOut()>YES</div><div class=button onClick=nextUp(0);$('#dlgBox').fadeOut()>NO :(</div><div class=button onClick=nextUp(1);$('#dlgBox').fadeOut()>SOMEONE BEAT ME TO IT</div><div class=button onClick=nextUp(1);$('#dlgBox').fadeOut()>IT WAS NOT AN ERROR AFTER ALL</div>");
+	dlg("The area is being loaded in " + (e=='j'?'JOSM':'Potlatch') + " now. Come back here after you do your edits.<br /><br />Did you fix it?<p><div class=button onClick=nextUp(1);$('#dlgBox').fadeOut()>YES</div><div class=button onClick=nextUp(0);$('#dlgBox').fadeOut()>NO , I FORGOT / GOT LAZY</div><div class=button onClick=nextUp(2);$('#dlgBox').fadeOut()>NO, UNFIXABLE (CONFUSING, COULDN'T SEE, TUNNEL)</div>");
 }
 
 function showAbout() {

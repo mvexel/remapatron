@@ -5,6 +5,10 @@ import geojson
 import simplejson as json
 import logging 
 
+CHALLENGE_ID = 10
+SKIP_THRESHOLD = 2 # number of times a task must have been marked before
+# it is no longer served up
+
 logging.basicConfig(format='%(asctime)s %(message)s', filename='/var/log/maproulette/maproulette.log',level=logging.DEBUG)
 
 urls = (
@@ -25,16 +29,17 @@ class getcandidate:
         sql = """SELECT ST_AsGeoJSON(linestring), id  FROM 
                 mr_ways_no_lanes_challenge 
                 WHERE NOT done AND type = 'motorway' AND (current_timestamp - donetime) > '1 hour' 
-                ORDER BY random LIMIT 1"""
+                AND skipflag <= %s
+                ORDER BY random LIMIT 1""" % (SKIP_THRESHOLD)
         logging.debug(sql)
         cur.execute(sql)
         recs = cur.fetchall()
         (way,wayid) = recs[0]
 #lock the way
         cur2 = conn.cursor()
-        sql = cur2.mogrify("SELECT mr_upsert(%s::boolean,%s)", (0,wayid))
+        sql = cur2.mogrify("SELECT mr_upsert(%s,%s)", (0,wayid))
         logging.debug(sql)
-        cur2.execute("SELECT mr_upsert(%s::boolean,%s)", (0,wayid))
+        cur2.execute("SELECT mr_upsert(%s,%s)", (0,wayid))
         out = geojson.FeatureCollection([geojson.Feature(geometry=geojson.loads(way),properties={"id": wayid})])
         conn.commit();
         cur2.close()
@@ -48,7 +53,9 @@ class storeresult:
         if not osmid:
             return web.badrequest();
         try:
-            cur.execute("SELECT mr_upsert(%s::boolean,%s)", (done,osmid))
+            if (done == '2'):
+                return True
+            cur.execute("SELECT mr_upsert(%s,%s)", (done,osmid))
             conn.commit()
         except Exception, e:
             print e
@@ -65,6 +72,8 @@ class getcount:
         cur = conn.cursor()
         cur.execute("select count(1) from mr_ways_no_lanes_challenge where type = 'motorway' and not done;")
         result.append(cur.fetchone()[0])
+        cur.execute("insert into remapathonresults values (now(), %s, %s)", (result[0], CHALLENGE_ID,))
+        conn.commit()
         cur.execute("select count(1) FROM tnav_ways_no_lanes_mrstatus WHERE now() - donetime < interval '1 hour' and done")
         result.append(cur.fetchone()[0])
         cur.execute("select count(1) FROM tnav_ways_no_lanes_mrstatus WHERE now() - donetime < interval '1 day' and done")
