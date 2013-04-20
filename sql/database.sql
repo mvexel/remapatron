@@ -9,6 +9,23 @@ SET check_function_bodies = false;
 SET client_min_messages = warning;
 
 --
+-- Name: osm; Type: DATABASE; Schema: -; Owner: osm
+--
+
+CREATE DATABASE osm WITH TEMPLATE = template0 ENCODING = 'UTF8' LC_COLLATE = 'en_US.UTF-8' LC_CTYPE = 'en_US.UTF-8';
+
+
+ALTER DATABASE osm OWNER TO osm;
+
+\connect osm
+
+SET statement_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SET check_function_bodies = false;
+SET client_min_messages = warning;
+
+--
 -- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
 --
 
