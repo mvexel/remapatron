@@ -166,10 +166,10 @@ function openIn(editor) {
 			}
 		});
 	} else if (editor == 'p') { // potlatch
-		//var PotlatchURL = 'http://www.openstreetmap.org/edit?editor=potlatch2&bbox=' + map.getBounds().toBBoxString();
-		//window.open(PotlatchURL);
-        msg("Potlatch does not support loading a single object so it is not well suited for this challenge, which sometimes involves editing very long way segments.",5)
-		//setTimeout("confirmRemap('p')", 4000)
+		var PotlatchURL = 'http://www.openstreetmap.org/edit?editor=potlatch2&bbox=' + map.getBounds().toBBoxString();
+		window.open(PotlatchURL);
+        //msg("Potlatch does not support loading a single object so it is not well suited for this challenge, which sometimes involves editing very long way segments.",5)
+		setTimeout("confirmRemap('p')", 4000)
 	}
 }
 
