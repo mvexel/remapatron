@@ -28,7 +28,7 @@ class getcandidate:
         cur = conn.cursor()
         sql = """SELECT ST_AsGeoJSON(linestring), id  FROM 
                 mr_ways_no_lanes_challenge 
-                WHERE NOT done AND type = 'motorway' AND (current_timestamp - donetime) > '1 hour' 
+                WHERE NOT done AND (type = 'motorway' or type = 'trunk') AND (current_timestamp - donetime) > '1 hour'
                 AND skipflag <= %s
                 ORDER BY random LIMIT 1""" % (SKIP_THRESHOLD)
         logging.debug(sql)
@@ -70,7 +70,7 @@ class getcount:
         result = []
         conn = psycopg2.connect("host=localhost dbname=osm user=osm password=osm")
         cur = conn.cursor()
-        cur.execute("select count(1) from mr_ways_no_lanes_challenge where type = 'motorway' and not done;")
+        cur.execute("select count(1) from mr_ways_no_lanes_challenge where (type = 'motorway' or type = 'trunk') and not done and skipflag <= %s;", (SKIP_THRESHOLD,))
         result.append(cur.fetchone()[0])
         cur.execute("insert into remapathonresults values (now(), %s, %s)", (result[0], CHALLENGE_ID,))
         conn.commit()
