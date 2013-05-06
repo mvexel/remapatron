@@ -1,0 +1,22 @@
+# remapping microstaking apache config
+
+# webapp
+
+Alias /mr-conn /home/ubuntu/mr-conn/webapp
+
+<Directory /home/ubuntu/mr-conn/webapp>
+    Order deny,allow
+    Allow from all
+</Directory>
+
+# config for the python script
+
+WSGIScriptAlias /mrconnsvc /home/ubuntu/mr-conn/service/get.py/
+Alias /mrconnsvc/static /home/ubuntu/mr-conn/service/static/
+
+AddType text/html .py
+
+<Directory /home/ubuntu/mr-conn/service/>
+        Order Allow,Deny
+        Allow from all
+</Directory>

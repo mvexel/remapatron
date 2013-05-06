@@ -1,7 +1,7 @@
 var config = {
-	geojsonserviceurl: 'http://192.168.6.128/mrsvc/get/',
-	storeresulturl: 'http://192.168.6.128/mrsvc/store/',
-	counturl: 'http://192.168.6.128/mrsvc/count/',
+	geojsonserviceurl: '/mrconnsvc/get/',
+	storeresulturl: '/mrconnsvc/store/',
+	counturl: '/mrconnsvc/count/',
 	enablekeyboardhooks: true,
 	challenge: {
 		hasWay: true,
