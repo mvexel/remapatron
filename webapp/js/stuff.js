@@ -4,6 +4,7 @@ var plotlist;
 var plotlayers=[];
 var geojsonLayer = new L.GeoJSON();
 var get_url = "/mrsvc/get/";
+var getgeo_url = "/mrsvc/getgeo/";
 var store_url = "/mrsvc/store/";
 var count_url = "/mrsvc/count/";
 var clickcnt;
@@ -16,7 +17,16 @@ var osmAttrib='Map data © OpenStreetMap contributors'
 var t; 
 var currentWayId = 0;
 
+var lon=getParameterByName('lon');
+var lat=getParameterByName('lat');
+var dist=getParameterByName('dist');
+
 var DISABLEKEYBOARDHOOKS = false;
+
+function getParameterByName(name) {
+    var match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
 
 var geojsonMarkerOptions = {
     radius: 14,
@@ -64,14 +74,47 @@ function dlgClose() {
     $('#dlgBox').fadeOut();
 }
 
-
 function getItem() {
+    if (lon && lat && dist) {
+        getItemGeo(lon,lat,dist);
+    } else {
+        msg('Faites vos jeux...', 0);
+        map.removeLayer(geojsonLayer);
+        geojsonLayer = new L.GeoJSON();
+        map.addLayer(geojsonLayer);
+        $.getJSON(
+            get_url,
+            function(data) {
+                currentWayId = data.features[0].properties['id'];
+                var extent = getExtent(data.features[0]);
+                geojsonLayer.addData(data.features[0]);$                                                                                      
+                map.fitBounds(extent);
+                var mqurl = 'http://open.mapquestapi.com/nominatim/v1/reverse?format=json&lat=' + map.getCenter().lat + ' &lon=' + map.getCenter().lng;
+                //msg(mqurl, 3);
+                msgClose()
+                $.getJSON(mqurl, 
+                    function(data){
+                        var locstr = 'We\'re in ';
+                        locstr += data.address.county;
+                        locstr += data.address.county.toLowerCase().indexOf('county') > -1?'':' County';
+                        locstr += ', ' + data.address.state
+                        msg(locstr , 3);
+                    }
+                );
+                updateCounter();
+            }
+        );
+    }
+};
+
+function getItemGeo(lon,lat,dist) {
     msg('Faites vos jeux...', 0);
     map.removeLayer(geojsonLayer);
     geojsonLayer = new L.GeoJSON();
     map.addLayer(geojsonLayer);
+    url=getgeo_url + [lon,lat,dist].join('/');
     $.getJSON(
-        get_url,
+        url,
         function(data) {
 			currentWayId = data.features[0].properties['id'];
             var extent = getExtent(data.features[0]);
@@ -100,7 +143,7 @@ function initmap() {
     map.setView(new L.LatLng(40.0, -90.0),17);
     map.addLayer(osmLayer);
     map.addLayer(geojsonLayer);
-    getItem();
+    getItem()
     $.cookie('activelayer', 'osmLayer');
 	
 	// add keyboard hooks
