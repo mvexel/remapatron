@@ -39,7 +39,10 @@ class getcandidate:
         recs = cur.fetchall()
         print recs[0]
         (way,wayid,point,nodeid) = recs[0]
-        out = geojson.FeatureCollection([geojson.Feature(geometry=geojson.loads(way),properties={"id": wayid}),geojson.Feature(geometry=geojson.loads(point),properties={"id": nodeid})])
+        if point is not None:
+            out = geojson.FeatureCollection([geojson.Feature(geometry=geojson.loads(way),properties={"id": wayid}),geojson.Feature(geometry=geojson.loads(point),properties={"id": nodeid})])
+        else:
+            out = geojson.FeatureCollection([geojson.Feature(geometry=geojson.loads(way),properties={"id": wayid})])
         return geojson.dumps(out)
 
 # this class handles the /store service hook
@@ -73,10 +76,10 @@ class getcount:
         rec = cur.fetchone()
         result.append(rec[1])
 #FIXME hardcoded chalenge ID as second parameter
-        cur.execute("select mr_donesince(1,0)")
+        cur.execute("select mr_donesince(1)")
         result.append(cur.fetchone()[0])
 #FIXME hardcoded challenge id as second parameter
-        cur.execute("select mr_donesince(24,0)")
+        cur.execute("select mr_donesince(24)")
         result.append(cur.fetchone()[0])
         cur.close()
         return json.dumps(result)

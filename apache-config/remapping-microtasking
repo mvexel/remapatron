@@ -2,9 +2,9 @@
 
 # webapp
 
-Alias /mr-conn /home/ubuntu/mr-conn/webapp
+Alias /mr-conn /home/ubuntu/mr-conn/client
 
-<Directory /home/ubuntu/mr-conn/webapp>
+<Directory /home/ubuntu/mr-conn/client>
     Order deny,allow
     Allow from all
 </Directory>
